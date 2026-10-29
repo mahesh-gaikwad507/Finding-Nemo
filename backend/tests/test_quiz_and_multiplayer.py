@@ -53,6 +53,11 @@ def db_session():
     user2 = User(id=2, username="dory_user2", email="dory2@test.com", password_hash="hash2")
     user3 = User(id=3, username="marlin_user3", email="marlin3@test.com", password_hash="hash3")
     session.add_all([user1, user2, user3])
+
+    # Seed CompetitionSetting so games can start in tests by default
+    from models import CompetitionSetting
+    setting = CompetitionSetting(id=1, is_game_started=True)
+    session.add(setting)
     session.commit()
 
     yield session
@@ -357,10 +362,82 @@ def test_one_domain_per_team_locking_and_enforcement(db_session):
     db_session.commit()
     sql_room = create_room(db_session, host_user_id=1, category="sql", team_name="Team SQL")
 
-    with pytest.raises(ValueError, match="Domain locked"):
-        join_room(db_session, user_id=3, room_code=sql_room.room_code, team_name="Team Guest")
+    # User 3 attempts to retake the quiz -> MUST BE REJECTED under single attempt rule
+    with pytest.raises(ValueError, match="already completed"):
+        start_new_game(db_session, user_id=3, category="python")
 
-    # User 3 is allowed to play / retake their assigned domain (Python)
-    replay_attempt = start_new_game(db_session, user_id=3, category="python")
-    assert replay_attempt.category == "python"
+
+def test_competition_admin_controls_and_excel_export(db_session):
+    """Test admin competition start/pause controls, teams status, and Excel export."""
+    from models import CompetitionSetting, User
+    from services.quiz_service import start_new_game
+    from routes.admin_routes import export_teams_excel
+    import io
+    import openpyxl
+
+    # Ensure admin user exists
+    admin = db_session.query(User).filter(User.username == "mahesh123").first()
+    if not admin:
+        admin = User(
+            id=99,
+            username="mahesh123",
+            password_hash="hashed_dummy",
+            team_name="Nemo Admins",
+            leader_name="Mahesh",
+            phone_number="9876543210",
+            is_admin=True
+        )
+        db_session.add(admin)
+        db_session.commit()
+
+    # Create new participant user
+    team_user = User(
+        id=101,
+        username="team_ocean",
+        password_hash="pw",
+        team_name="Team Ocean",
+        leader_name="Alice",
+        phone_number="9988776655",
+        is_admin=False
+    )
+    db_session.add(team_user)
+    db_session.commit()
+
+    # 1. When competition is paused, participant cannot start
+    setting = db_session.query(CompetitionSetting).filter(CompetitionSetting.id == 1).first()
+    setting.is_game_started = False
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="competition has not started yet"):
+        start_new_game(db_session, user_id=101, category="python")
+
+    # 2. When admin starts the competition, participant can start
+    setting.is_game_started = True
+    db_session.commit()
+
+    attempt = start_new_game(db_session, user_id=101, category="python")
+    assert attempt is not None
+    assert attempt.user_id == 101
+
+    # 3. Verify Excel export produces valid workbook with headers
+    response = export_teams_excel(db=db_session)
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert "Dexerity_Competition_Records" in response.headers["Content-Disposition"]
+    assert response.headers["Content-Disposition"].endswith(".xlsx")
+
+    # Verify workbook content
+    wb = openpyxl.load_workbook(io.BytesIO(response.body))
+    ws = wb.active
+    assert ws.title == "Competition Scorecard"
+
+    # Check header columns (Row 4 has the table headers)
+    headers = [cell.value for cell in ws[4]]
+    assert "Team Name" in headers
+    assert "Leader Name" in headers
+    assert "Phone No." in headers
+    assert "Field / Domain" in headers
+    assert "Score" in headers
+    assert "Correct Qs" in headers
+    assert "Time Taken" in headers
 

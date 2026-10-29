@@ -393,6 +393,96 @@
   line-height: 1.5;
 }
 
+.domain-enforced-banner.completed-banner {
+  border-left-color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.domain-enforced-banner.completed-banner .domain-enforced-title {
+  color: #34d399;
+}
+
+/* ── Competition Waiting & Live Banners ──────────────────────────────────── */
+.competition-waiting-banner {
+  max-width: 820px;
+  width: 90%;
+  margin: 0 auto 28px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  border-radius: 16px;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 10px 35px rgba(245, 158, 11, 0.2);
+  backdrop-filter: blur(14px);
+  position: relative;
+  z-index: 10;
+  animation: waiting-pulse 2.5s infinite;
+}
+
+@keyframes waiting-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); }
+  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
+}
+
+.waiting-pulse-icon {
+  font-size: 32px;
+  animation: pulse-spin 2s ease-in-out infinite;
+}
+
+@keyframes pulse-spin {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(15deg); }
+}
+
+.waiting-banner-info {
+  flex: 1;
+}
+
+.waiting-banner-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+
+.waiting-banner-desc {
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.competition-live-banner {
+  max-width: 820px;
+  width: 90%;
+  margin: 0 auto 28px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 9999px;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #34d399;
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+  z-index: 10;
+}
+
+.live-pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: #34d399;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #34d399;
+  animation: pulse-live 1.2s infinite;
+}
+
+
 .cat-card.cat-card-locked {
   opacity: 0.55;
   filter: grayscale(60%);

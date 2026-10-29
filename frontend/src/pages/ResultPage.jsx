@@ -128,22 +128,79 @@ export default function ResultPage() {
           <StatCard icon="🏠" label="Nemo home?" value={nemo_reached_home ? 'Yes! Safe!' : 'Partially safe'} color={nemo_reached_home ? '#34d399' : '#38bdf8'} />
         </div>
 
-        {/* Action buttons */}
+        {/* Individual Team Scorecard */}
+        <div className="team-scorecard-box">
+          <div className="scorecard-header">
+            <span className="scorecard-badge-icon">📋</span>
+            <span className="scorecard-title">Official Team Scorecard</span>
+          </div>
+          <div className="scorecard-grid">
+            <div className="scorecard-item">
+              <span className="sc-lbl">Team Name:</span>
+              <span className="sc-val bold">{user?.team_name || user?.username}</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Leader Name:</span>
+              <span className="sc-val">{user?.leader_name || '—'}</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Phone Number:</span>
+              <span className="sc-val mono">{user?.phone_number || '—'}</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Field / Domain:</span>
+              <span className="sc-val highlight">{category?.toUpperCase()}</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Total Score:</span>
+              <span className="sc-val gold">{score} pts</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Correct Questions:</span>
+              <span className="sc-val green">{correct_answers} / {total_questions}</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Accuracy:</span>
+              <span className="sc-val green">{accuracy}%</span>
+            </div>
+            <div className="scorecard-item">
+              <span className="sc-lbl">Total Timing:</span>
+              <span className="sc-val cyan">{formatTime(total_time_seconds)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Single Attempt Lock Notice */}
+        <div className="single-attempt-notice">
+          <span>🔒</span>
+          <span>Official Attempt Completed &bull; Under competition rules, each team can only attempt once. Dive Again is disabled.</span>
+        </div>
+
+        {/* Action buttons (Dive Again REMOVED per competition rules) */}
         <div className="result-actions">
           <button
-            id="result-play-again-btn"
-            className="result-btn primary"
-            onClick={() => navigate('/categories')}
-          >
-            🔄 Dive Again
-          </button>
-          <button
             id="result-leaderboard-btn"
-            className="result-btn secondary"
+            className="result-btn primary"
             onClick={() => navigate(`/leaderboard?category=${category}`)}
           >
-            🏆 Winner Dashboard
+            🏆 View Competition Leaderboard
           </button>
+          <button
+            id="result-home-btn"
+            className="result-btn secondary"
+            onClick={() => navigate('/categories')}
+          >
+            ← Categories
+          </button>
+          {isAdmin && (
+            <button
+              id="result-admin-btn"
+              className="result-btn admin-btn"
+              onClick={() => navigate('/admin')}
+            >
+              👑 Admin Command
+            </button>
+          )}
         </div>
       </div>
     </div>

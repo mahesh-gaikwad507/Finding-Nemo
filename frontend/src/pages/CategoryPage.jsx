@@ -1,11 +1,8 @@
-/**
- * CategoryPage — pick Python, SQL, or Excel to start a quiz.
- */
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { quizAPI } from '../api';
+import { quizAPI, adminAPI, userAPI } from '../api';
 import { sounds } from '../utils/audio';
-import { useState, useEffect } from 'react';
 import './CategoryPage.css';
 
 const CATEGORIES = [
@@ -39,15 +36,24 @@ const CATEGORIES = [
 ];
 
 export default function CategoryPage() {
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [starting, setStarting] = useState(null);
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(sounds.isMuted());
   const [lockedDomain, setLockedDomain] = useState(user?.locked_domain || null);
+  const [competitionStarted, setCompetitionStarted] = useState(false);
+  const [hasCompleted, setHasCompleted] = useState(false);
 
-  useEffect(() => {
-    // Check real-time domain lock status
+  const isAdmin = user?.is_admin || user?.username?.toLowerCase() === 'mahesh123';
+
+  const checkStatus = () => {
+    adminAPI.status()
+      .then((res) => {
+        setCompetitionStarted(res.data.is_game_started);
+      })
+      .catch(() => {});
+
     quizAPI.domainStatus()
       .then((res) => {
         if (res.data?.locked_domain) {
@@ -55,6 +61,20 @@ export default function CategoryPage() {
         }
       })
       .catch(() => {});
+
+    userAPI.profile()
+      .then((res) => {
+        if (res.data.completed_games > 0) {
+          setHasCompleted(true);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    checkStatus();
+    const interval = setInterval(checkStatus, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleSound = () => {
@@ -64,6 +84,16 @@ export default function CategoryPage() {
 
   const handleStart = async (categoryId) => {
     if (starting) return;
+
+    if (!competitionStarted && !isAdmin) {
+      setError('The quiz competition has not started yet. Please wait for Admin (mahesh123) to click Start.');
+      return;
+    }
+
+    if (hasCompleted && !isAdmin) {
+      setError('You have already completed your quiz attempt. Under competition rules, each team is allowed only one attempt.');
+      return;
+    }
 
     // Enforce 1-domain-per-team rule on client
     if (lockedDomain && lockedDomain !== categoryId) {
@@ -108,13 +138,15 @@ export default function CategoryPage() {
           >
             {muted ? '🔇' : '🔊'}
           </button>
-          <button
-            id="multiplayer-nav-btn"
-            className="nav-btn primary-room"
-            onClick={() => { sounds.playBubble(); navigate('/room'); }}
-          >
-            👥 Play Together
-          </button>
+          {isAdmin && (
+            <button
+              id="admin-nav-btn"
+              className="nav-btn primary-room"
+              onClick={() => { sounds.playBubble(); navigate('/admin'); }}
+            >
+              👑 Admin Command
+            </button>
+          )}
           <button
             id="leaderboard-nav-btn"
             className="nav-btn secondary"
@@ -123,8 +155,8 @@ export default function CategoryPage() {
             🏆 Leaderboard
           </button>
           <div className="nav-user">
-            <span className="nav-avatar">{user?.username?.[0]?.toUpperCase()}</span>
-            <span className="nav-username">{user?.username}</span>
+            <span className="nav-avatar">{user?.team_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}</span>
+            <span className="nav-username">{user?.team_name || user?.username}</span>
           </div>
           <button id="logout-btn" className="nav-btn logout" onClick={logout}>
             Sign out
@@ -134,40 +166,55 @@ export default function CategoryPage() {
 
       {/* Hero */}
       <div className="cat-hero">
-        <h1>Choose Your Adventure</h1>
-        <p>Help Nemo find his way home by mastering a skill. Pick a solo category or create a multiplayer room!</p>
+        <h1>Dexerity Quiz Competition</h1>
+        <p>
+          Team: <strong>{user?.team_name || user?.username}</strong> {user?.leader_name ? `• Leader: ${user.leader_name}` : ''}
+        </p>
       </div>
 
-      {/* 1 Domain Per Team Rule Banner */}
-      {lockedDomain && (
-        <div className="domain-enforced-banner">
-          <span className="domain-enforced-icon">🔒</span>
+      {/* Competition Status Banner */}
+      {!competitionStarted ? (
+        <div className="competition-waiting-banner">
+          <span className="waiting-pulse-icon">⏳</span>
+          <div className="waiting-banner-info">
+            <div className="waiting-banner-title">Waiting for Admin (mahesh123) to Start Quiz</div>
+            <div className="waiting-banner-desc">
+              The competition has not begun yet. Review the domains below. As soon as the host clicks <strong>START</strong>, quiz buttons will automatically activate!
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="competition-live-banner">
+          <span className="live-pulse-dot" />
+          <span>Competition is <strong>LIVE</strong>! Select your chosen field below to begin.</span>
+        </div>
+      )}
+
+      {/* Single Attempt Already Completed Banner */}
+      {hasCompleted && (
+        <div className="domain-enforced-banner completed-banner">
+          <span className="domain-enforced-icon">✅</span>
           <div className="domain-enforced-content">
-            <div className="domain-enforced-title">1 Team = 1 Field Enforced</div>
+            <div className="domain-enforced-title">Quiz Attempt Completed</div>
             <div className="domain-enforced-desc">
-              Your team completed the <strong>{lockedDomain.toUpperCase()}</strong> test. Under competition rules, each team can select only one field and play in that field. Other domains are locked.
+              Your team has officially completed the quiz. In accordance with competition rules, each team can only attempt the test once. Check the Leaderboard to view final rankings!
             </div>
           </div>
         </div>
       )}
 
-      {/* Multiplayer Callout Banner */}
-      <div className="multiplayer-banner">
-        <div className="banner-left">
-          <span className="banner-icon">🌊</span>
-          <div>
-            <h3>Want to play with friends?</h3>
-            <p>Create a private room, share your code, and race Nemo together in real-time!</p>
+      {/* 1 Domain Per Team Rule Banner */}
+      {lockedDomain && !hasCompleted && (
+        <div className="domain-enforced-banner">
+          <span className="domain-enforced-icon">🔒</span>
+          <div className="domain-enforced-content">
+            <div className="domain-enforced-title">1 Team = 1 Field Enforced</div>
+            <div className="domain-enforced-desc">
+              Your team is registered for <strong>{lockedDomain.toUpperCase()}</strong>. Each team can select only one field and play in that field. Other domains are locked.
+            </div>
           </div>
         </div>
-        <button
-          id="create-room-banner-btn"
-          className="banner-btn"
-          onClick={() => navigate('/room')}
-        >
-          Create / Join Room 🚀
-        </button>
-      </div>
+      )}
 
       {error && (
         <div className="cat-error-banner">
@@ -180,11 +227,12 @@ export default function CategoryPage() {
         {CATEGORIES.map((cat) => {
           const isAssigned = lockedDomain && lockedDomain === cat.id;
           const isLockedOut = lockedDomain && lockedDomain !== cat.id;
+          const isButtonDisabled = starting !== null || isLockedOut || hasCompleted || (!competitionStarted && !isAdmin);
 
           return (
             <article
               key={cat.id}
-              className={`cat-card ${isAssigned ? 'cat-card-assigned' : ''} ${isLockedOut ? 'cat-card-locked' : ''}`}
+              className={`cat-card ${isAssigned ? 'cat-card-assigned' : ''} ${isLockedOut || hasCompleted ? 'cat-card-locked' : ''}`}
               style={{ '--glow': cat.glow, '--gradient': cat.gradient, '--color': cat.color }}
             >
               <div className="cat-card-inner">
@@ -192,7 +240,9 @@ export default function CategoryPage() {
                 <h2>{cat.label}</h2>
                 <p className="cat-desc">{cat.description}</p>
                 
-                {isAssigned ? (
+                {hasCompleted ? (
+                  <div className="cat-badge badge-locked">✅ COMPLETED (1 ATTEMPT RULE)</div>
+                ) : isAssigned ? (
                   <div className="cat-badge badge-assigned">⭐ YOUR ASSIGNED DOMAIN</div>
                 ) : isLockedOut ? (
                   <div className="cat-badge badge-locked">🔒 LOCKED (1 FIELD RULE)</div>
@@ -202,24 +252,38 @@ export default function CategoryPage() {
 
                 <button
                   id={`start-${cat.id}-btn`}
-                  className={`cat-start-btn ${isAssigned ? 'assigned' : ''} ${isLockedOut ? 'locked' : ''}`}
+                  className={`cat-start-btn ${isAssigned ? 'assigned' : ''} ${isLockedOut || hasCompleted || !competitionStarted ? 'locked' : ''}`}
                   onClick={() => handleStart(cat.id)}
-                  disabled={starting !== null || isLockedOut}
-                  title={isLockedOut ? `Your team domain is locked to ${lockedDomain.toUpperCase()}` : ''}
+                  disabled={isButtonDisabled}
+                  title={
+                    hasCompleted
+                      ? 'You have already submitted your attempt.'
+                      : !competitionStarted
+                      ? 'Waiting for Admin (mahesh123) to start the quiz.'
+                      : isLockedOut
+                      ? `Your team domain is locked to ${lockedDomain.toUpperCase()}`
+                      : ''
+                  }
                 >
                   {starting === cat.id ? (
                     <span className="spinner-sm" />
+                  ) : hasCompleted ? (
+                    '✅ Attempt Finished'
+                  ) : !competitionStarted ? (
+                    '⏳ Waiting for Start'
                   ) : isLockedOut ? (
                     '🔒 Locked'
-                  ) : isAssigned ? (
-                    'Play Again →'
                   ) : (
                     'Start Quiz →'
                   )}
                 </button>
-                {isLockedOut && (
+                {hasCompleted ? (
+                  <div className="cat-lock-subtext">Each team is allowed only 1 attempt</div>
+                ) : isLockedOut ? (
                   <div className="cat-lock-subtext">Each team is restricted to 1 field</div>
-                )}
+                ) : !competitionStarted ? (
+                  <div className="cat-lock-subtext">Host will launch shortly</div>
+                ) : null}
               </div>
             </article>
           );
@@ -231,3 +295,4 @@ export default function CategoryPage() {
     </div>
   );
 }
+

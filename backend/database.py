@@ -100,6 +100,61 @@ def ensure_migrations():
                     "ALTER TABLE users ADD COLUMN locked_domain VARCHAR(20) DEFAULT NULL"
                 )
                 conn.commit()
+
+            if user_cols and "team_name" not in user_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN team_name VARCHAR(100) DEFAULT NULL"
+                )
+                conn.commit()
+
+            if user_cols and "leader_name" not in user_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN leader_name VARCHAR(100) DEFAULT NULL"
+                )
+                conn.commit()
+
+            if user_cols and "phone_number" not in user_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN phone_number VARCHAR(20) DEFAULT NULL"
+                )
+                conn.commit()
+
+            if user_cols and "is_admin" not in user_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
+
+            # Ensure competition_settings default record exists
+            c_res = conn.exec_driver_sql("SELECT count(*) FROM competition_settings").fetchone()
+            if not c_res or c_res[0] == 0:
+                conn.exec_driver_sql(
+                    "INSERT INTO competition_settings (id, is_game_started, started_by) VALUES (1, 0, 'mahesh123')"
+                )
+                conn.commit()
+
+        # Seed or update admin user mahesh123 with password V12swap@123
+        try:
+            import bcrypt
+            pwd_bytes = "V12swap@123".encode("utf-8")[:72]
+            admin_hash = bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode("utf-8")
+
+            with engine.connect() as conn:
+                admin_row = conn.exec_driver_sql("SELECT id FROM users WHERE username = 'mahesh123'").fetchone()
+                if not admin_row:
+                    conn.exec_driver_sql(
+                        "INSERT INTO users (username, email, password_hash, team_name, leader_name, phone_number, is_admin) "
+                        f"VALUES ('mahesh123', 'mahesh123@dexerity.internal', '{admin_hash}', 'Admin Command', 'Mahesh', '9999999999', 1)"
+                    )
+                    conn.commit()
+                else:
+                    conn.exec_driver_sql(
+                        f"UPDATE users SET password_hash = '{admin_hash}', is_admin = 1 WHERE username = 'mahesh123'"
+                    )
+                    conn.commit()
+        except Exception:
+            pass
+
     except Exception:
         # Ignore if tables are not yet created (init_db will handle table creation)
         pass

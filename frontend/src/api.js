@@ -60,3 +60,13 @@ export const roomAPI = {
   releaseLeaderboard: (roomCode) => api.post(`/api/rooms/${roomCode}/release_leaderboard`),
 };
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+export const adminAPI = {
+  status: () => api.get('/api/admin/status'),
+  startGame: () => api.post('/api/admin/start-game'),
+  resetGame: () => api.post('/api/admin/reset-game'),
+  getTeams: () => api.get('/api/admin/teams'),
+  downloadExcel: () => api.get('/api/admin/export-excel', { responseType: 'blob' }),
+};
+
+

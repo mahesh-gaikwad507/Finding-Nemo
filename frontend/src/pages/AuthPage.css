@@ -233,3 +233,31 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Admin Login Custom Styling ───────────────────────────────────────────── */
+.auth-tabs button.admin-tab-btn.active {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.5);
+}
+
+.admin-notice-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.auth-submit.admin-submit {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 20px rgba(217, 119, 6, 0.4);
+}
+
+.auth-submit.admin-submit:hover:not(:disabled) {
+  box-shadow: 0 8px 28px rgba(217, 119, 6, 0.55);
+}
+

@@ -9,25 +9,41 @@ from datetime import datetime
 # AUTH SCHEMAS
 # ============================================================
 class UserRegister(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_]+$")
-    email: str = Field(..., min_length=5, max_length=100)
-    password: str = Field(..., min_length=6, max_length=100)
+    team_name: str = Field(..., min_length=2, max_length=100)
+    leader_name: str = Field(..., min_length=2, max_length=100)
+    phone_number: str = Field(..., min_length=5, max_length=20)
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: str = Field(..., min_length=4, max_length=100)
 
 
 class UserLogin(BaseModel):
-    username: str
+    username: Optional[str] = None
+    team_name: Optional[str] = None
+    phone_number: Optional[str] = None
     password: str
 
 
 class UserResponse(BaseModel):
     id: int
     username: str
-    email: str
+    email: Optional[str] = None
+    team_name: Optional[str] = None
+    leader_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_admin: bool = False
     locked_domain: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class CompetitionStatusResponse(BaseModel):
+    is_game_started: bool
+    started_at: Optional[datetime] = None
+    started_by: Optional[str] = None
+    total_teams: int = 0
 
 
 class DomainStatusResponse(BaseModel):

@@ -9,8 +9,7 @@ import CategoryPage from './pages/CategoryPage';
 import QuizPage from './pages/QuizPage';
 import ResultPage from './pages/ResultPage';
 import LeaderboardPage from './pages/LeaderboardPage';
-import RoomLobbyPage from './pages/RoomLobbyPage';
-import RoomQuizPage from './pages/RoomQuizPage';
+import AdminDashboard from './pages/AdminDashboard';
 import OceanBackground from './components/OceanBackground';
 import { sounds } from './utils/audio';
 
@@ -46,12 +45,14 @@ function AppRoutes() {
 
       {/* Protected */}
       <Route path="/categories" element={<Protected><CategoryPage /></Protected>} />
+      <Route path="/admin" element={<Protected><AdminDashboard /></Protected>} />
       <Route path="/quiz/:attemptId" element={<Protected><QuizPage /></Protected>} />
       <Route path="/result/:attemptId" element={<Protected><ResultPage /></Protected>} />
       <Route path="/leaderboard" element={<Protected><LeaderboardPage /></Protected>} />
-      <Route path="/room" element={<Protected><RoomLobbyPage /></Protected>} />
-      <Route path="/room/:roomCode" element={<Protected><RoomLobbyPage /></Protected>} />
-      <Route path="/room/play/:roomCode" element={<Protected><RoomQuizPage /></Protected>} />
+
+      {/* Room features removed per requirements: redirect to categories */}
+      <Route path="/room" element={<Navigate to="/categories" replace />} />
+      <Route path="/room/*" element={<Navigate to="/categories" replace />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/auth" replace />} />

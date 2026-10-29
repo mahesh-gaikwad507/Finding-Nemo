@@ -21,15 +21,26 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (username, password) => {
-    const res = await authAPI.login({ username, password });
+  const login = useCallback(async (identifier, password) => {
+    const payload = typeof identifier === 'object' ? identifier : { username: identifier, password };
+    const res = await authAPI.login(payload);
     localStorage.setItem('token', res.data.access_token);
     setUser(res.data.user);
     return res.data;
   }, []);
 
-  const register = useCallback(async (username, email, password) => {
-    const res = await authAPI.register({ username, email, password });
+  const register = useCallback(async (dataOrUsername, email, password) => {
+    const payload = typeof dataOrUsername === 'object'
+      ? dataOrUsername
+      : {
+          team_name: dataOrUsername,
+          leader_name: dataOrUsername,
+          phone_number: '9999999999',
+          username: dataOrUsername,
+          email: email || `${dataOrUsername}@ocean.local`,
+          password,
+        };
+    const res = await authAPI.register(payload);
     localStorage.setItem('token', res.data.access_token);
     setUser(res.data.user);
     return res.data;

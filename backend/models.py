@@ -14,8 +14,12 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=False)
+    team_name = Column(String(100), nullable=True, index=True)
+    leader_name = Column(String(100), nullable=True)
+    phone_number = Column(String(20), nullable=True, index=True)
+    is_admin = Column(Boolean, nullable=False, default=False)
     locked_domain = Column(String(20), nullable=True)  # 'python', 'sql', 'excel', or None
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -165,5 +169,16 @@ class RoomParticipant(Base):
 
     room = relationship("Room", back_populates="participants")
     user = relationship("User", foreign_keys=[user_id])
+
+
+class CompetitionSetting(Base):
+    __tablename__ = "competition_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    is_game_started = Column(Boolean, nullable=False, default=False)
+    started_at = Column(TIMESTAMP, nullable=True)
+    started_by = Column(String(50), nullable=True)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
 
 

@@ -18,6 +18,7 @@ from routes.quiz_routes import router as quiz_router
 from routes.leaderboard_routes import router as leaderboard_router
 from routes.user_routes import router as user_router
 from routes.room_routes import router as room_router
+from routes.admin_routes import router as admin_router
 
 load_dotenv()
 
@@ -45,6 +46,7 @@ app.include_router(quiz_router)
 app.include_router(leaderboard_router)
 app.include_router(user_router)
 app.include_router(room_router)
+app.include_router(admin_router)
 
 
 @app.get("/api/health")

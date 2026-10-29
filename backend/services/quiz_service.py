@@ -27,13 +27,13 @@ def get_user_locked_domain(db: Session, user_id: int) -> Optional[str]:
     if user.locked_domain:
         return user.locked_domain
 
-    # Check for completed quiz attempt
-    completed_attempt = db.query(QuizAttempt).filter(
-        and_(QuizAttempt.user_id == user_id, QuizAttempt.is_completed == True)
-    ).order_by(QuizAttempt.completed_at.asc(), QuizAttempt.id.asc()).first()
+    # Check for any quiz attempt (active in progress or completed)
+    any_attempt = db.query(QuizAttempt).filter(
+        QuizAttempt.user_id == user_id
+    ).order_by(QuizAttempt.id.asc()).first()
 
-    if completed_attempt:
-        user.locked_domain = completed_attempt.category
+    if any_attempt:
+        user.locked_domain = any_attempt.category
         db.commit()
         db.refresh(user)
         return user.locked_domain
@@ -62,12 +62,33 @@ def start_new_game(db: Session, user_id: int, category: str) -> QuizAttempt:
     Stale or unplayed attempts have their start timestamp refreshed, and abandoned
     attempts older than 30 minutes are finalized so a fresh session begins.
     """
-    # Enforce 1-domain-per-team rule: 1 team can select only one field and play in that field
+    from models import CompetitionSetting
+
+    user = db.query(User).filter(User.id == user_id).first()
+    is_admin_user = user and (user.is_admin or user.username.lower() in ("mahesh123", "admin"))
+
+    # 1. Enforce competition start by admin
+    setting = db.query(CompetitionSetting).filter(CompetitionSetting.id == 1).first()
+    if setting and not setting.is_game_started and not is_admin_user:
+        raise ValueError(
+            "The quiz competition has not started yet. Please wait for Admin (mahesh123) to click Start."
+        )
+
+    # 2. Enforce 1-domain-per-team rule: 1 team can select only one field and play in that field
     locked = get_user_locked_domain(db, user_id)
     if locked and category != locked:
         raise ValueError(
             f"Domain locked: Your team is registered for '{locked.upper()}'. "
             f"In accordance with competition rules, each team can only select 1 field and cannot play '{category.upper()}'."
+        )
+
+    # 3. Enforce single attempt rule: "No same user can play game again"
+    completed = db.query(QuizAttempt).filter(
+        and_(QuizAttempt.user_id == user_id, QuizAttempt.is_completed == True)
+    ).first()
+    if completed and not is_admin_user:
+        raise ValueError(
+            "You have already completed the quiz. In accordance with competition rules, each team is allowed only one attempt."
         )
 
     now = datetime.now(timezone.utc)
@@ -118,6 +139,8 @@ def start_new_game(db: Session, user_id: int, category: str) -> QuizAttempt:
         total_time_seconds=0
     )
     db.add(attempt)
+    if user and not user.locked_domain and not is_admin_user:
+        user.locked_domain = category
     db.commit()
     db.refresh(attempt)
     return attempt

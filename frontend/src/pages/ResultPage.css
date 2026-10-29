@@ -157,6 +157,116 @@
 .sc-sub { font-size: 10px; color: #4a7a9b; margin-top: -2px; }
 .sc-label { font-size: 10px; color: #4a7a9b; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
 
+/* ── Team Scorecard Box ─────────────────────────────────────────────────── */
+.team-scorecard-box {
+  background: rgba(4, 28, 56, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+  text-align: left;
+  backdrop-filter: blur(12px);
+}
+
+.scorecard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.scorecard-badge-icon {
+  font-size: 20px;
+}
+
+.scorecard-title {
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #00f0ff;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+}
+
+.scorecard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 18px;
+}
+
+.scorecard-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sc-lbl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.sc-val {
+  font-size: 14px;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.sc-val.bold {
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.sc-val.mono {
+  font-family: monospace;
+  letter-spacing: 0.5px;
+  color: #93c5fd;
+}
+
+.sc-val.highlight {
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.sc-val.gold {
+  font-weight: 800;
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+}
+
+.sc-val.green {
+  font-weight: 800;
+  color: #34d399;
+}
+
+.sc-val.cyan {
+  font-weight: 800;
+  color: #00f0ff;
+  font-family: monospace;
+}
+
+/* ── Single Attempt Notice ────────────────────────────────────────────────── */
+.single-attempt-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 22px;
+  font-size: 12px;
+  color: #fca5a5;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 /* ── Actions ──────────────────────────────────────────────────────────────── */
 .result-actions {
   display: flex;
@@ -185,6 +295,12 @@
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.12);
   color: #a8d8ff;
+}
+
+.result-btn.admin-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
 }
 
 .result-btn:hover { transform: translateY(-2px); opacity: 0.92; }
