@@ -1,0 +1,14 @@
+services:
+  dexerity-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dexerity-quiz-app
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=nemo-adventure-super-secret-key-production-ready-2026
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - DB_TYPE=sqlite
+    restart: unless-stopped

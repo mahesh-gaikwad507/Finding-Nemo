@@ -1,0 +1,13 @@
+@echo off
+echo ========================================================
+echo       Dexerity - Finding Nemo: Quiz Adventure
+echo ========================================================
+echo.
+
+cd /d "%~dp0\backend"
+echo Initializing database...
+py init_db.py 2>nul || python init_db.py
+
+echo Starting production server on http://localhost:8000 ...
+py -m uvicorn main:app --host 0.0.0.0 --port 8000 || python -m uvicorn main:app --host 0.0.0.0 --port 8000
+pause

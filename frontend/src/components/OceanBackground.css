@@ -1,0 +1,309 @@
+/**
+ * OceanBackground.css — Classy animated underwater aquatic life scenery
+ */
+
+.ocean-bg-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+  background: radial-gradient(ellipse 95% 45% at 50% 0%, rgba(0, 240, 255, 0.18) 0%, rgba(6, 182, 212, 0.08) 35%, transparent 75%),
+              linear-gradient(180deg, #041f3d 0%, #03162c 25%, #020e1f 60%, #010813 100%);
+}
+
+/* Shimmering Sun Rays / God Rays Filtering from Top */
+.ocean-god-rays {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60vh;
+  background: repeating-linear-gradient(
+    108deg,
+    transparent 0%,
+    rgba(0, 240, 255, 0.04) 5%,
+    rgba(56, 189, 248, 0.08) 12%,
+    transparent 20%
+  );
+  filter: blur(8px);
+  mix-blend-mode: screen;
+  animation: godRaysDrift 14s ease-in-out infinite alternate;
+}
+
+/* Water Surface Caustics */
+.ocean-caustics-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 35vh;
+  background: radial-gradient(circle 200px at 20% 0%, rgba(0, 240, 255, 0.15), transparent 70%),
+              radial-gradient(circle 250px at 75% 0%, rgba(56, 189, 248, 0.12), transparent 70%);
+  animation: causticsPulse 9s ease-in-out infinite alternate;
+}
+
+/* Rising Bubbles */
+.ocean-bubbles-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.ocean-bubble {
+  position: absolute;
+  bottom: -40px;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.8) 0%, rgba(0, 240, 255, 0.4) 30%, rgba(6, 182, 212, 0.1) 70%, rgba(255, 255, 255, 0.6) 90%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  box-shadow: inset -2px -2px 6px rgba(0, 240, 255, 0.3), 0 0 10px rgba(0, 240, 255, 0.2);
+  animation-name: bubbleRise, bubbleWobble;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear, ease-in-out;
+  opacity: 0.75;
+}
+
+/* Aquatic Life Layer */
+.aquatic-life-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.creature-wrapper {
+  position: absolute;
+  will-change: transform;
+}
+
+/* ── Nemo (Clownfish) Swimming Left to Right ── */
+.nemo-swim-1 {
+  top: 38%;
+  left: -120px;
+  animation: nemoSwimPath 26s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: drop-shadow(0 6px 14px rgba(255, 107, 0, 0.35));
+}
+
+.nemo-fish .fish-tail {
+  transform-origin: 22px 32px;
+  animation: tailWiggle 0.6s ease-in-out infinite alternate;
+}
+
+.nemo-fish .pectoral-fin {
+  transform-origin: 54px 34px;
+  animation: finFlap 0.7s ease-in-out infinite alternate;
+}
+
+/* ── Dory (Blue Tang) Swimming Right to Left ── */
+.dory-swim-1 {
+  top: 60%;
+  right: -130px;
+  animation: dorySwimPath 32s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: 4s;
+  filter: drop-shadow(0 6px 16px rgba(37, 99, 235, 0.45));
+}
+
+.dory-fish .fish-tail-alt {
+  transform-origin: 85px 35px;
+  animation: tailWiggle 0.5s ease-in-out infinite alternate;
+}
+
+/* ── Turtle (Crush) Gliding Across Upper Ocean ── */
+.turtle-swim {
+  top: 14%;
+  left: -160px;
+  animation: turtleCruise 42s linear infinite;
+  animation-delay: 8s;
+  filter: drop-shadow(0 8px 20px rgba(5, 150, 105, 0.3));
+  opacity: 0.88;
+}
+
+.turtle-flipper.front-flipper {
+  transform-origin: 75px 32px;
+  animation: flipperStroke 2.2s ease-in-out infinite alternate;
+}
+
+.turtle-flipper.back-flipper {
+  transform-origin: 75px 58px;
+  animation: flipperStroke 2.2s ease-in-out infinite alternate;
+}
+
+/* ── Bioluminescent Jellyfish ── */
+.jellyfish-1 {
+  bottom: -110px;
+  left: 12%;
+  animation: jellyAscend 22s ease-in-out infinite;
+  animation-delay: 1s;
+  filter: drop-shadow(0 0 16px rgba(0, 240, 255, 0.6));
+}
+
+.jellyfish-2 {
+  bottom: -110px;
+  right: 18%;
+  animation: jellyAscend 28s ease-in-out infinite;
+  animation-delay: 12s;
+  filter: drop-shadow(0 0 14px rgba(244, 114, 182, 0.55));
+}
+
+.jelly-bell {
+  transform-origin: 35px 25px;
+  animation: jellyPump 2.2s ease-in-out infinite;
+}
+
+.tentacle {
+  animation: tentacleWave 2.2s ease-in-out infinite alternate;
+}
+.tentacle.t2 { animation-delay: 0.3s; }
+.tentacle.t3 { animation-delay: 0.6s; }
+.tentacle.t4 { animation-delay: 0.9s; }
+
+/* ── Manta Ray Gliding Deep ── */
+.manta-glide {
+  top: 75%;
+  left: -200px;
+  animation: mantaGlidePath 48s ease-in-out infinite;
+  animation-delay: 16s;
+  opacity: 0.6;
+}
+
+/* ── Sea Floor Reef Silhouettes ── */
+.ocean-floor-reef {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: radial-gradient(circle at 10% 100%, rgba(0, 240, 255, 0.12) 0%, transparent 60%),
+              radial-gradient(circle at 80% 100%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+  mask-image: linear-gradient(to top, black 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 30%, transparent 100%);
+  border-top: 1px solid rgba(0, 240, 255, 0.08);
+}
+
+/* ── Animations ── */
+
+@keyframes godRaysDrift {
+  0% { transform: scaleX(1) translateX(0); opacity: 0.6; }
+  50% { transform: scaleX(1.1) translateX(25px); opacity: 0.9; }
+  100% { transform: scaleX(1) translateX(0); opacity: 0.6; }
+}
+
+@keyframes causticsPulse {
+  0% { opacity: 0.5; transform: scaleY(1); }
+  100% { opacity: 0.85; transform: scaleY(1.15); }
+}
+
+@keyframes bubbleRise {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(-110vh); opacity: 0; }
+}
+
+@keyframes bubbleWobble {
+  0%, 100% { margin-left: 0; }
+  50% { margin-left: 20px; }
+}
+
+/* Nemo swims left to right with natural diving & rising */
+@keyframes nemoSwimPath {
+  0% {
+    transform: translate(-140px, 0) scale(0.9) rotate(2deg);
+  }
+  25% {
+    transform: translate(30vw, -45px) scale(0.95) rotate(-3deg);
+  }
+  50% {
+    transform: translate(60vw, 35px) scale(1) rotate(4deg);
+  }
+  75% {
+    transform: translate(85vw, -20px) scale(0.92) rotate(-2deg);
+  }
+  100% {
+    transform: translate(calc(100vw + 150px), 10px) scale(0.9) rotate(1deg);
+  }
+}
+
+/* Dory swims right to left */
+@keyframes dorySwimPath {
+  0% {
+    transform: translate(0, 0) scale(0.92) rotate(-1deg);
+  }
+  30% {
+    transform: translate(-35vw, 40px) scale(0.95) rotate(3deg);
+  }
+  65% {
+    transform: translate(-70vw, -30px) scale(0.98) rotate(-4deg);
+  }
+  100% {
+    transform: translate(calc(-100vw - 160px), 15px) scale(0.92) rotate(1deg);
+  }
+}
+
+/* Turtle slow, majestic glide */
+@keyframes turtleCruise {
+  0% {
+    transform: translate(-180px, 0) rotate(3deg);
+  }
+  50% {
+    transform: translate(55vw, 50px) rotate(-1deg);
+  }
+  100% {
+    transform: translate(calc(100vw + 200px), 10px) rotate(2deg);
+  }
+}
+
+/* Jellyfish pulsating ascent */
+@keyframes jellyAscend {
+  0% {
+    transform: translateY(0) scale(0.85);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-115vh) scale(1.05);
+    opacity: 0;
+  }
+}
+
+@keyframes jellyPump {
+  0%, 100% { transform: scale(1, 1); }
+  40% { transform: scale(1.18, 0.82); }
+  60% { transform: scale(0.9, 1.15); }
+}
+
+@keyframes tentacleWave {
+  0% { transform: skewX(-5deg); }
+  100% { transform: skewX(5deg); }
+}
+
+@keyframes tailWiggle {
+  0% { transform: rotate(-14deg); }
+  100% { transform: rotate(14deg); }
+}
+
+@keyframes finFlap {
+  0% { transform: rotate(-8deg) scaleY(0.9); }
+  100% { transform: rotate(16deg) scaleY(1.1); }
+}
+
+@keyframes flipperStroke {
+  0% { transform: rotate(-12deg); }
+  100% { transform: rotate(16deg); }
+}
+
+@keyframes mantaGlidePath {
+  0% {
+    transform: translate(-220px, 0) scale(1);
+  }
+  50% {
+    transform: translate(50vw, -40px) scale(1.1);
+  }
+  100% {
+    transform: translate(calc(100vw + 220px), 20px) scale(1);
+  }
+}
