@@ -31,6 +31,7 @@ export const quizAPI = {
   answer: (attemptId, data) => api.post(`/api/quiz/answer/${attemptId}`, data),
   result: (attemptId) => api.get(`/api/quiz/result/${attemptId}`),
   abandon: (attemptId) => api.post(`/api/quiz/abandon/${attemptId}`),
+  revealClue: (attemptId) => api.post(`/api/quiz/reveal-clue/${attemptId}`),
   domainStatus: () => api.get('/api/quiz/domain-status'),
   resetDomain: () => api.post('/api/quiz/reset-domain'),
 };

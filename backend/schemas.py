@@ -65,7 +65,7 @@ class QuestionOut(BaseModel):
     """Question sent to the frontend — NO correct answer or explanation."""
     id: int
     sequence_number: int
-    clue: str
+    clue: Optional[str] = None
     question_text: str
     options: dict  # {"A": "...", "B": "...", "C": "...", "D": "..."}
     concept: str
@@ -129,6 +129,17 @@ class GameStateResponse(BaseModel):
     progress_percentage: float
     total_questions: int = 30
     question: Optional[QuestionOut] = None
+    clues_total: int = 3
+    clues_used: int = 0
+    clues_remaining: int = 3
+    is_clue_revealed: bool = False
+
+
+class ClueResponse(BaseModel):
+    clue: str
+    clues_used: int
+    clues_remaining: int
+    is_clue_revealed: bool = True
 
 
 # ============================================================

@@ -224,13 +224,6 @@ export default function ResultPage() {
           >
             {exiting ? 'Ending Session…' : '🏁 End Game & Exit'}
           </button>
-          <button
-            id="result-leaderboard-btn"
-            className="result-btn primary"
-            onClick={() => navigate(`/leaderboard?category=${category}`)}
-          >
-            🏆 View Competition Leaderboard
-          </button>
           {isAdmin && (
             <button
               id="result-admin-btn"

@@ -31,6 +31,9 @@ export default function QuizPage() {
   const [muted, setMuted] = useState(sounds.isMuted());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  const [revealingClue, setRevealingClue] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+
   const timerRef = useRef(null);
   const sessionStartRef = useRef(Date.now());
 
@@ -66,6 +69,29 @@ export default function QuizPage() {
   const toggleSound = () => {
     const isM = sounds.toggleMute();
     setMuted(isM);
+  };
+
+  const handleRevealClue = async () => {
+    if (revealingClue || (state?.clues_remaining ?? 0) <= 0) return;
+    setRevealingClue(true);
+    try {
+      const res = await quizAPI.revealClue(attemptId);
+      sounds.playBubble();
+      setState((prev) => ({
+        ...prev,
+        clues_used: res.data.clues_used,
+        clues_remaining: res.data.clues_remaining,
+        is_clue_revealed: true,
+        question: {
+          ...prev.question,
+          clue: res.data.clue,
+        },
+      }));
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not unlock clue.');
+    } finally {
+      setRevealingClue(false);
+    }
   };
 
   const handleSelect = async (letter) => {
@@ -110,11 +136,11 @@ export default function QuizPage() {
     await fetchState();
   }, [feedback, attemptId, navigate, fetchState]);
 
-  // Auto-advance after 3 s on correct, 4 s on wrong
+  // User advances at their own pace using Next Button; no forced fast timer
   useEffect(() => {
+    // 60-second safety timeout only
     if (!feedback) return;
-    const delay = feedback.is_correct ? 2800 : 4000;
-    timerRef.current = setTimeout(handleNext, delay);
+    timerRef.current = setTimeout(handleNext, 60000);
     return () => clearTimeout(timerRef.current);
   }, [feedback, handleNext]);
 
@@ -150,12 +176,22 @@ export default function QuizPage() {
 
         <div className="quiz-stats">
           <StatBadge icon="⏱️" value={formatTime(elapsedSeconds)} label="Time" color="#00f0ff" />
+          <StatBadge icon="💡" value={`${state.clues_remaining ?? 3}/3`} label="Clues" color="#fbbf24" />
           <StatBadge icon="✅" value={correct_answers} label="Correct" color="#34d399" />
           <StatBadge icon="❌" value={wrong_answers} label="Wrong" color="#f87171" />
-          <StatBadge icon="⭐" value={score} label="Score" color="#fbbf24" />
+          <StatBadge icon="⭐" value={score} label="Score" color="#a78bfa" />
         </div>
 
         <div className="header-actions">
+          <button
+            id="rules-toggle-btn"
+            className="rules-toggle-btn"
+            onClick={() => setShowRulesModal(true)}
+            title="View competition instructions & rules"
+            aria-label="View instructions"
+          >
+            📋 Rules
+          </button>
           <button
             id="sound-toggle-btn"
             className="sound-toggle-btn"
@@ -197,11 +233,45 @@ export default function QuizPage() {
       {/* Question card */}
       {question ? (
         <div className="question-section">
-          {/* Clue */}
-          <div className="clue-box">
-            <span className="clue-icon">💡</span>
-            <p className="clue-text">{question.clue}</p>
-          </div>
+          {/* Clue Section: 3 clues budget across 30 questions */}
+          {state.is_clue_revealed || question.clue ? (
+            <div className="clue-box clue-revealed">
+              <div className="clue-header-row">
+                <span className="clue-icon">💡</span>
+                <span className="clue-status-badge">
+                  Clue Unlocked • {state.clues_remaining}/3 Lifelines Remaining
+                </span>
+              </div>
+              <p className="clue-text">{question.clue}</p>
+            </div>
+          ) : (
+            <div className="clue-box clue-locked">
+              <div className="clue-locked-info">
+                <span className="clue-icon">💡</span>
+                <div>
+                  <div className="clue-locked-title">Question Hint Available</div>
+                  <div className="clue-locked-desc">
+                    Each team has <strong>{state.clues_remaining}/3</strong> clues remaining across the 30 questions.
+                  </div>
+                </div>
+              </div>
+              <button
+                id="reveal-clue-btn"
+                type="button"
+                className="reveal-clue-btn"
+                onClick={handleRevealClue}
+                disabled={revealingClue || (state.clues_remaining ?? 0) <= 0}
+              >
+                {revealingClue ? (
+                  'Unlocking…'
+                ) : (state.clues_remaining ?? 0) > 0 ? (
+                  `🔓 Use Clue (${state.clues_remaining}/3 left)`
+                ) : (
+                  '🔒 0 Clues Left (3/3 used)'
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Concept + difficulty */}
           <div className="question-meta">
@@ -237,6 +307,12 @@ export default function QuizPage() {
                 );
               })}
             </div>
+
+            {/* Forward-only navigation rule notice */}
+            <div className="forward-only-indicator">
+              <span className="indicator-icon">➡️</span>
+              <span>Forward-Only Mode: Answer and proceed with <strong>Next Question</strong>. No previous button is available.</span>
+            </div>
           </div>
 
           {/* Narrative context */}
@@ -270,6 +346,47 @@ export default function QuizPage() {
               onClick={handleNext}
             >
               {feedback.is_completed ? 'See Results 🏁' : 'Next Question →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions / Rules Modal */}
+      {showRulesModal && (
+        <div className="quiz-rules-modal-backdrop" onClick={() => setShowRulesModal(false)}>
+          <div className="quiz-rules-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rules-modal-header">
+              <h2>📋 Tournament Rules & Instructions</h2>
+              <button className="rules-close-btn" onClick={() => setShowRulesModal(false)}>✕</button>
+            </div>
+            <div className="rules-modal-body">
+              <div className="rule-item">
+                <span className="rule-badge">🔒</span>
+                <div>
+                  <strong>Single Attempt Tournament:</strong> Each team can only attempt once. Your score and timing are officially logged.
+                </div>
+              </div>
+              <div className="rule-item">
+                <span className="rule-badge">💡</span>
+                <div>
+                  <strong>3 Clues Total (Lifeline System):</strong> You have access to exactly 3 clues out of the 30 questions. Use your clues strategically on the most difficult questions!
+                </div>
+              </div>
+              <div className="rule-item">
+                <span className="rule-badge">➡️</span>
+                <div>
+                  <strong>Forward-Only Progression:</strong> Only the <strong>Next Question</strong> button is available after each question. There is <strong>no Previous button</strong> — questions cannot be revisited.
+                </div>
+              </div>
+              <div className="rule-item">
+                <span className="rule-badge">⭐</span>
+                <div>
+                  <strong>Scoring & Timing:</strong> +10 points for correct answers, -2 points for incorrect answers. Fast completion with high accuracy achieves top ranking.
+                </div>
+              </div>
+            </div>
+            <button className="rules-done-btn" onClick={() => setShowRulesModal(false)}>
+              Got It, Continue Quiz →
             </button>
           </div>
         </div>

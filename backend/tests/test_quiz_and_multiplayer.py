@@ -441,3 +441,70 @@ def test_competition_admin_controls_and_excel_export(db_session):
     assert "Correct Qs" in headers
     assert "Time Taken" in headers
 
+
+def test_clues_lifeline_three_maximum(db_session):
+    """Verify that players are granted exactly 3 clues out of 30 questions."""
+    from services.quiz_service import reveal_clue_for_attempt, get_game_state
+
+    # Start new game for user1
+    attempt = start_new_game(db_session, user_id=1, category="python")
+
+    # Initial state: clues hidden by default, 3/3 remaining
+    state1 = get_game_state(db_session, attempt.id, user_id=1)
+    assert state1["clues_total"] == 3
+    assert state1["clues_used"] == 0
+    assert state1["clues_remaining"] == 3
+    assert state1["is_clue_revealed"] is False
+    assert state1["question"]["clue"] is None
+
+    # Reveal 1st clue on Question 1
+    res1 = reveal_clue_for_attempt(db_session, attempt.id, user_id=1)
+    assert res1["clue"] == "Clue 1"
+    assert res1["clues_used"] == 1
+    assert res1["clues_remaining"] == 2
+    assert res1["is_clue_revealed"] is True
+
+    # Re-revealing on Question 1 does not consume another clue
+    res1_repeat = reveal_clue_for_attempt(db_session, attempt.id, user_id=1)
+    assert res1_repeat["clues_used"] == 1
+    assert res1_repeat["clues_remaining"] == 2
+
+    # Answer Question 1
+    q1 = db_session.query(Question).filter(Question.category == "python", Question.sequence_number == 1).first()
+    submit_answer(db_session, attempt.id, user_id=1, question_id=q1.id, selected_answer="A")
+
+    # Move to Question 2: clue hidden by default
+    state2 = get_game_state(db_session, attempt.id, user_id=1)
+    assert state2["current_question"] == 2
+    assert state2["clues_remaining"] == 2
+    assert state2["question"]["clue"] is None
+
+    # Reveal 2nd clue on Question 2
+    res2 = reveal_clue_for_attempt(db_session, attempt.id, user_id=1)
+    assert res2["clues_used"] == 2
+    assert res2["clues_remaining"] == 1
+    assert res2["clue"] == "Clue 2"
+
+    # Answer Question 2
+    q2 = db_session.query(Question).filter(Question.category == "python", Question.sequence_number == 2).first()
+    submit_answer(db_session, attempt.id, user_id=1, question_id=q2.id, selected_answer="A")
+
+    # Reveal 3rd clue on Question 3
+    res3 = reveal_clue_for_attempt(db_session, attempt.id, user_id=1)
+    assert res3["clues_used"] == 3
+    assert res3["clues_remaining"] == 0
+    assert res3["clue"] == "Clue 3"
+
+    # Answer Question 3
+    q3 = db_session.query(Question).filter(Question.category == "python", Question.sequence_number == 3).first()
+    submit_answer(db_session, attempt.id, user_id=1, question_id=q3.id, selected_answer="A")
+
+    # Now on Question 4: Attempting to reveal a 4th clue MUST raise an error
+    state4 = get_game_state(db_session, attempt.id, user_id=1)
+    assert state4["current_question"] == 4
+    assert state4["clues_remaining"] == 0
+
+    with pytest.raises(ValueError, match="No clues remaining"):
+        reveal_clue_for_attempt(db_session, attempt.id, user_id=1)
+
+

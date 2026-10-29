@@ -5,11 +5,11 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
-from schemas import StartGameRequest, GameStateResponse, AnswerSubmit, AnswerFeedback
+from schemas import StartGameRequest, GameStateResponse, AnswerSubmit, AnswerFeedback, ClueResponse
 from auth import get_current_user
 from typing import Optional
 from services.quiz_service import (
-    start_new_game, get_game_state, submit_answer, get_game_result, abandon_game, get_user_locked_domain
+    start_new_game, get_game_state, submit_answer, get_game_result, abandon_game, get_user_locked_domain, reveal_clue_for_attempt
 )
 
 
@@ -67,6 +67,15 @@ def answer_question(
         raise HTTPException(status_code=400, detail=result["error"])
 
     return result
+
+
+@router.post("/reveal-clue/{attempt_id}", response_model=ClueResponse)
+def reveal_clue(attempt_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Reveal the clue for the current question using one of the 3 available lifelines."""
+    try:
+        return reveal_clue_for_attempt(db, attempt_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/result/{attempt_id}")

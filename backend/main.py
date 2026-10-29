@@ -31,6 +31,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+@app.on_event("startup")
+def configure_concurrency():
+    """Ensure thread pool can handle 100+ concurrent users with zero request queuing."""
+    try:
+        import anyio
+        anyio.to_thread.current_default_thread_limiter().total_tokens = 200
+    except Exception:
+        pass
+
 # CORS middleware - allow any origin for public tunnel & cloud deployments
 app.add_middleware(
     CORSMiddleware,

@@ -1,12 +1,22 @@
-"""Quiz game service — core game logic, scoring, and answer validation."""
-
+import json
 import random
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from typing import Optional
-from models import Question, QuizAttempt, UserAnswer, User
+from models import Question, QuizAttempt, UserAnswer, User, CompetitionSetting
+
+def get_cached_question(db: Session, category: str, sequence_number: int) -> Optional[Question]:
+    """Retrieve question for attempt category and sequence number."""
+    return db.query(Question).filter(
+        and_(Question.category == category, Question.sequence_number == sequence_number)
+    ).first()
+
+
+def get_cached_question_by_id(db: Session, question_id: int) -> Optional[Question]:
+    """Retrieve question by its primary key ID."""
+    return db.query(Question).filter(Question.id == question_id).first()
 
 
 TOTAL_QUESTIONS = 30
@@ -146,14 +156,32 @@ def start_new_game(db: Session, user_id: int, category: str) -> QuizAttempt:
     return attempt
 
 
+def get_revealed_set(attempt: QuizAttempt) -> set:
+    """Get the set of question sequence numbers where clue was revealed for this attempt."""
+    if not attempt or not getattr(attempt, "revealed_questions", None):
+        return set()
+    try:
+        data = json.loads(attempt.revealed_questions)
+        if isinstance(data, list):
+            return set(data)
+    except Exception:
+        pass
+    return set()
+
+
 def get_game_state(db: Session, attempt_id: int, user_id: int) -> dict:
-    """Get the full game state including current question."""
+    """Get the full game state including current question and clue availability."""
     attempt = db.query(QuizAttempt).filter(
         and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == user_id)
     ).first()
 
     if not attempt:
         return None
+
+    revealed_set = get_revealed_set(attempt)
+    is_revealed = attempt.current_question in revealed_set
+    clues_used = getattr(attempt, "clues_used", 0) or len(revealed_set)
+    clues_remaining = max(0, 3 - clues_used)
 
     result = {
         "attempt_id": attempt.id,
@@ -167,29 +195,28 @@ def get_game_state(db: Session, attempt_id: int, user_id: int) -> dict:
         "nemo_position": attempt.correct_answers,
         "progress_percentage": round((attempt.correct_answers / TOTAL_QUESTIONS) * 100, 2),
         "total_questions": TOTAL_QUESTIONS,
+        "clues_total": 3,
+        "clues_used": clues_used,
+        "clues_remaining": clues_remaining,
+        "is_clue_revealed": is_revealed,
         "question": None
     }
 
     if not attempt.is_completed and attempt.current_question <= TOTAL_QUESTIONS:
         question = get_question_for_attempt(db, attempt)
         if question:
-            result["question"] = format_question_for_client(question)
+            result["question"] = format_question_for_client(question, is_clue_revealed=is_revealed)
 
     return result
 
 
-def get_question_for_attempt(db: Session, attempt: QuizAttempt) -> Question:
-    """Get the current question for the attempt, enforcing sequence."""
-    return db.query(Question).filter(
-        and_(
-            Question.category == attempt.category,
-            Question.sequence_number == attempt.current_question
-        )
-    ).first()
+def get_question_for_attempt(db: Session, attempt: QuizAttempt) -> Optional[Question]:
+    """Get the current question for the attempt, enforcing sequence with high-speed cache."""
+    return get_cached_question(db, attempt.category, attempt.current_question)
 
 
-def format_question_for_client(question: Question) -> dict:
-    """Format a question for the frontend — keeps options fixed, constant, and identical for every user and domain."""
+def format_question_for_client(question: Question, is_clue_revealed: bool = False) -> dict:
+    """Format a question for the frontend — keeps options fixed. Clue is revealed only when unlocked."""
     options = {
         "A": question.option_a,
         "B": question.option_b,
@@ -200,13 +227,59 @@ def format_question_for_client(question: Question) -> dict:
     return {
         "id": question.id,
         "sequence_number": question.sequence_number,
-        "clue": question.clue,
+        "clue": question.clue if is_clue_revealed else None,
         "question_text": question.question_text,
         "options": options,
         "concept": question.concept,
         "difficulty": question.difficulty,
         "narrative_context": question.narrative_context,
         "_correct_answer": question.correct_answer
+    }
+
+
+def reveal_clue_for_attempt(db: Session, attempt_id: int, user_id: int) -> dict:
+    """Unlock the clue for the current question if within the 3-clue lifeline limit."""
+    attempt = db.query(QuizAttempt).filter(
+        and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == user_id)
+    ).first()
+    if not attempt:
+        raise ValueError("Game session not found")
+
+    if attempt.is_completed:
+        raise ValueError("This quiz is already completed")
+
+    question = get_question_for_attempt(db, attempt)
+    if not question:
+        raise ValueError("Current question not found")
+
+    revealed_set = get_revealed_set(attempt)
+
+    # Already revealed for this question
+    if attempt.current_question in revealed_set:
+        used = getattr(attempt, "clues_used", 0) or len(revealed_set)
+        return {
+            "clue": question.clue,
+            "clues_used": used,
+            "clues_remaining": max(0, 3 - used),
+            "is_clue_revealed": True,
+        }
+
+    # Check budget (max 3 clues per 30 questions)
+    used = getattr(attempt, "clues_used", 0) or len(revealed_set)
+    if used >= 3:
+        raise ValueError("No clues remaining. You have already used all 3 clues across this quiz.")
+
+    revealed_set.add(attempt.current_question)
+    attempt.clues_used = used + 1
+    attempt.revealed_questions = json.dumps(sorted(list(revealed_set)))
+    db.commit()
+    db.refresh(attempt)
+
+    return {
+        "clue": question.clue,
+        "clues_used": attempt.clues_used,
+        "clues_remaining": max(0, 3 - attempt.clues_used),
+        "is_clue_revealed": True,
     }
 
 
@@ -230,8 +303,8 @@ def submit_answer(
     if attempt.is_completed:
         return {"error": "This game is already completed"}
 
-    # Get the question
-    question = db.query(Question).filter(Question.id == question_id).first()
+    # Get the question with high-speed cache
+    question = get_cached_question_by_id(db, question_id)
     if not question:
         return {"error": "Invalid question"}
 

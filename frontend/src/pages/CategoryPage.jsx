@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { quizAPI, adminAPI, userAPI } from '../api';
@@ -45,35 +45,42 @@ export default function CategoryPage() {
   const [competitionStarted, setCompetitionStarted] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
 
+  // Instructions modal shown FIRST before starting game
+  const [instructionModalCat, setInstructionModalCat] = useState(null);
+  const [agreedToRules, setAgreedToRules] = useState(false);
+
+  const isPollingRef = useRef(false);
   const isAdmin = user?.is_admin || user?.username?.toLowerCase() === 'mahesh123';
 
-  const checkStatus = () => {
-    adminAPI.status()
-      .then((res) => {
-        setCompetitionStarted(res.data.is_game_started);
-      })
-      .catch(() => {});
+  const checkStatus = async () => {
+    if (isPollingRef.current || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
+      return;
+    }
+    isPollingRef.current = true;
+    try {
+      const [adminRes, domainRes, profileRes] = await Promise.allSettled([
+        adminAPI.status(),
+        quizAPI.domainStatus(),
+        userAPI.profile(),
+      ]);
 
-    quizAPI.domainStatus()
-      .then((res) => {
-        if (res.data?.locked_domain) {
-          setLockedDomain(res.data.locked_domain);
-        }
-      })
-      .catch(() => {});
-
-    userAPI.profile()
-      .then((res) => {
-        if (res.data.completed_games > 0) {
-          setHasCompleted(true);
-        }
-      })
-      .catch(() => {});
+      if (adminRes.status === 'fulfilled') {
+        setCompetitionStarted(adminRes.value.data.is_game_started);
+      }
+      if (domainRes.status === 'fulfilled' && domainRes.value.data?.locked_domain) {
+        setLockedDomain(domainRes.value.data.locked_domain);
+      }
+      if (profileRes.status === 'fulfilled' && profileRes.value.data.completed_games > 0) {
+        setHasCompleted(true);
+      }
+    } finally {
+      isPollingRef.current = false;
+    }
   };
 
   useEffect(() => {
     checkStatus();
-    const interval = setInterval(checkStatus, 2000);
+    const interval = setInterval(checkStatus, 3500);
     return () => clearInterval(interval);
   }, []);
 
@@ -82,9 +89,7 @@ export default function CategoryPage() {
     setMuted(isM);
   };
 
-  const handleStart = async (categoryId) => {
-    if (starting) return;
-
+  const handleCardClick = (categoryId) => {
     if (!competitionStarted && !isAdmin) {
       setError('The quiz competition has not started yet. Please wait for Admin (mahesh123) to click Start.');
       return;
@@ -101,6 +106,17 @@ export default function CategoryPage() {
       return;
     }
 
+    // Show Instructions modal FIRST before starting the game
+    setError('');
+    sounds.playBubble();
+    setInstructionModalCat(categoryId);
+    setAgreedToRules(false);
+  };
+
+  const handleConfirmStart = async () => {
+    if (!instructionModalCat || starting) return;
+    const categoryId = instructionModalCat;
+
     setStarting(categoryId);
     setError('');
     sounds.playSplash();
@@ -112,6 +128,7 @@ export default function CategoryPage() {
       console.error(err);
       setError(err.response?.data?.detail || 'Could not open quiz. Please try again.');
       setStarting(null);
+      setInstructionModalCat(null);
     }
   };
 
@@ -222,6 +239,35 @@ export default function CategoryPage() {
         </div>
       )}
 
+      {/* Tournament Instructions Overview Banner */}
+      <div className="tournament-instructions-overview">
+        <div className="rules-overview-badge">
+          <span className="rules-overview-icon">📋</span>
+          <div>
+            <h3>Official Competition Rules &amp; Guidelines</h3>
+            <p>Please review tournament regulations before launching your test</p>
+          </div>
+        </div>
+        <div className="rules-quick-highlights">
+          <div className="q-highlight-item">
+            <span className="qh-icon">🔒</span>
+            <div className="qh-text"><strong>1 Attempt Only:</strong> One official submission per team</div>
+          </div>
+          <div className="q-highlight-item">
+            <span className="qh-icon">💡</span>
+            <div className="qh-text"><strong>3 Clues Total:</strong> Lifeline access to 3 clues across 30 questions</div>
+          </div>
+          <div className="q-highlight-item">
+            <span className="qh-icon">➡️</span>
+            <div className="qh-text"><strong>Forward Only:</strong> Next button progression with no previous button</div>
+          </div>
+          <div className="q-highlight-item">
+            <span className="qh-icon">⏱️</span>
+            <div className="qh-text"><strong>Live Timing:</strong> Ranks decided by Score, Accuracy &amp; Speed</div>
+          </div>
+        </div>
+      </div>
+
       {/* Cards */}
       <div className="cat-cards">
         {CATEGORIES.map((cat) => {
@@ -253,7 +299,7 @@ export default function CategoryPage() {
                 <button
                   id={`start-${cat.id}-btn`}
                   className={`cat-start-btn ${isAssigned ? 'assigned' : ''} ${isLockedOut || hasCompleted || !competitionStarted ? 'locked' : ''}`}
-                  onClick={() => handleStart(cat.id)}
+                  onClick={() => handleCardClick(cat.id)}
                   disabled={isButtonDisabled}
                   title={
                     hasCompleted
@@ -289,6 +335,105 @@ export default function CategoryPage() {
           );
         })}
       </div>
+
+      {/* ── Official Tournament Instructions Modal (Shown FIRST Before Starting) ── */}
+      {instructionModalCat && (
+        <div className="cat-instructions-backdrop" onClick={() => setInstructionModalCat(null)}>
+          <div className="cat-instructions-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-banner">
+              <span className="modal-crown-icon">📋</span>
+              <div>
+                <h2>Tournament Instructions &amp; Rules</h2>
+                <p>Read all guidelines before beginning your official competition attempt</p>
+              </div>
+              <button className="modal-close-x" onClick={() => setInstructionModalCat(null)}>✕</button>
+            </div>
+
+            <div className="modal-selected-domain-pill">
+              <span>Category Selected:</span>
+              <strong>
+                {CATEGORIES.find((c) => c.id === instructionModalCat)?.emoji}{' '}
+                {CATEGORIES.find((c) => c.id === instructionModalCat)?.label.toUpperCase()}
+              </strong>
+              <span>• Team: <strong>{user?.team_name || user?.username}</strong></span>
+            </div>
+
+            <div className="modal-rules-grid">
+              <div className="m-rule-card">
+                <span className="m-rule-icon">🔒</span>
+                <div>
+                  <strong>1 Team = 1 Official Attempt:</strong>
+                  <p>Each team is permitted only ONE attempt. Once started and completed, the quiz cannot be retaken under any circumstances.</p>
+                </div>
+              </div>
+
+              <div className="m-rule-card">
+                <span className="m-rule-icon">💡</span>
+                <div>
+                  <strong>3 Clues Lifeline (Total 3 Clues):</strong>
+                  <p>You have access to <strong>3 clues out of the 30 questions</strong>. Every question has a hint, but your team can only unlock up to 3 clues in total. Use them wisely!</p>
+                </div>
+              </div>
+
+              <div className="m-rule-card">
+                <span className="m-rule-icon">➡️</span>
+                <div>
+                  <strong>Forward-Only Navigation (Next Button Only):</strong>
+                  <p>After each question, use the <strong>Next Question</strong> button to proceed. <strong>No previous button is available</strong> — you cannot go back to change answers.</p>
+                </div>
+              </div>
+
+              <div className="m-rule-card">
+                <span className="m-rule-icon">⭐</span>
+                <div>
+                  <strong>Scoring &amp; Leaderboard:</strong>
+                  <p><strong>+10 points</strong> for correct answers, <strong>-2 points</strong> for wrong answers. Final standings are ranked by Score, Accuracy, and Fastest Completion Time.</p>
+                </div>
+              </div>
+
+              <div className="m-rule-card">
+                <span className="m-rule-icon">🐠</span>
+                <div>
+                  <strong>Nemo's Ocean Journey:</strong>
+                  <p>Answer all 30 questions in your chosen field to navigate Nemo across the ocean hazards safely back home.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-agreement-row">
+              <label className="checkbox-container">
+                <input
+                  type="checkbox"
+                  id="agree-rules-checkbox"
+                  checked={agreedToRules}
+                  onChange={(e) => setAgreedToRules(e.target.checked)}
+                />
+                <span className="agreement-text">
+                  I and my team have read, understood, and agree to strictly abide by the competition rules and instructions.
+                </span>
+              </label>
+            </div>
+
+            <div className="modal-action-footer">
+              <button
+                id="cancel-instructions-btn"
+                className="btn-cancel-instructions"
+                onClick={() => setInstructionModalCat(null)}
+              >
+                ← Back to Domains
+              </button>
+              <button
+                id="confirm-start-game-btn"
+                className="btn-confirm-start"
+                onClick={handleConfirmStart}
+                disabled={!agreedToRules || starting !== null}
+              >
+                {starting ? 'Launching Expedition…' : '🚀 I Understand & Begin Quiz'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nemo swimming decoration */}
       <div className="nemo-swim" aria-hidden="true">🐠</div>

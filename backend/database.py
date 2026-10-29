@@ -26,14 +26,34 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False}
+        connect_args={
+            "check_same_thread": False,
+            "timeout": 60,
+        },
+        pool_size=50,
+        max_overflow=50,
+        pool_timeout=60,
     )
+
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=60000")
+        cursor.execute("PRAGMA cache_size=-64000")
+        cursor.execute("PRAGMA mmap_size=268435456")
+        cursor.close()
 else:
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20
+        pool_size=50,
+        max_overflow=50,
+        pool_timeout=60,
+        pool_recycle=1800,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -122,6 +142,52 @@ def ensure_migrations():
             if user_cols and "is_admin" not in user_cols:
                 conn.exec_driver_sql(
                     "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
+
+            # Check quiz_attempts table columns
+            qa_cols = []
+            if DATABASE_URL.startswith("sqlite"):
+                qa_res = conn.exec_driver_sql("PRAGMA table_info(quiz_attempts)").fetchall()
+                qa_cols = [r[1] for r in qa_res]
+            else:
+                qa_res = conn.exec_driver_sql(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='quiz_attempts'"
+                ).fetchall()
+                qa_cols = [r[0] for r in qa_res]
+
+            if qa_cols and "clues_used" not in qa_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE quiz_attempts ADD COLUMN clues_used INTEGER DEFAULT 0"
+                )
+                conn.commit()
+
+            if qa_cols and "revealed_questions" not in qa_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE quiz_attempts ADD COLUMN revealed_questions TEXT DEFAULT '[]'"
+                )
+                conn.commit()
+
+            # Check room_teams table columns
+            rt_cols = []
+            if DATABASE_URL.startswith("sqlite"):
+                rt_res = conn.exec_driver_sql("PRAGMA table_info(room_teams)").fetchall()
+                rt_cols = [r[1] for r in rt_res]
+            else:
+                rt_res = conn.exec_driver_sql(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='room_teams'"
+                ).fetchall()
+                rt_cols = [r[0] for r in rt_res]
+
+            if rt_cols and "clues_used" not in rt_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE room_teams ADD COLUMN clues_used INTEGER DEFAULT 0"
+                )
+                conn.commit()
+
+            if rt_cols and "revealed_questions" not in rt_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE room_teams ADD COLUMN revealed_questions TEXT DEFAULT '[]'"
                 )
                 conn.commit()
 

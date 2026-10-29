@@ -68,6 +68,8 @@ class QuizAttempt(Base):
     completed_at = Column(TIMESTAMP, nullable=True)
     is_completed = Column(Boolean, nullable=False, default=False)
     total_time_seconds = Column(Integer, nullable=True)
+    clues_used = Column(Integer, nullable=False, default=0)
+    revealed_questions = Column(Text, nullable=False, default="[]")
 
     __table_args__ = (
         Index("idx_score_time", "score", "total_time_seconds"),
@@ -126,6 +128,8 @@ class RoomTeam(Base):
     correct_answers = Column(Integer, nullable=False, default=0)
     wrong_answers = Column(Integer, nullable=False, default=0)
     total_time_seconds = Column(Integer, nullable=False, default=0)
+    clues_used = Column(Integer, nullable=False, default=0)
+    revealed_questions = Column(Text, nullable=False, default="[]")
     is_finished = Column(Boolean, nullable=False, default=False)
     finished_at = Column(TIMESTAMP, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())

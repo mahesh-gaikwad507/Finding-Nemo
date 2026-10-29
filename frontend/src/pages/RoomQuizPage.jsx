@@ -409,6 +409,12 @@ export default function RoomQuizPage() {
             })}
           </div>
 
+          {/* Forward-only navigation rule notice */}
+          <div className="forward-only-indicator">
+            <span className="indicator-icon">➡️</span>
+            <span>Forward-Only Mode: Only "Next Question" is available after each answer. Previous questions cannot be revisited.</span>
+          </div>
+
           {question.narrative_context && (
             <p className="q-narrative">{question.narrative_context}</p>
           )}
