@@ -267,14 +267,22 @@ def get_room_state(db: Session, room_code: str, current_user_id: int) -> dict:
         })
 
     # Position of teams strictly decided on:
-    # 1. Max no. of corrected questions (DESC)
-    # 2. Timing (ASC, fastest time taken)
-    # 3. Score (DESC)
+    # 1. Actual Final Score (DESC)
+    # 2. Max no. of correct questions (DESC)
+    # 3. Timing (ASC, fastest time taken)
     teams_summary.sort(
         key=lambda t: (
+            -t["score"],
             -t["correct_answers"],
-            t["total_time_seconds"] if t["total_time_seconds"] > 0 else 999999,
-            -t["score"]
+            t["total_time_seconds"] if t["total_time_seconds"] > 0 else 999999
+        )
+    )
+
+    participant_list.sort(
+        key=lambda p: (
+            -p["score"],
+            -p["correct_answers"],
+            p["total_time_seconds"] if p["total_time_seconds"] > 0 else 999999
         )
     )
 
@@ -286,6 +294,7 @@ def get_room_state(db: Session, room_code: str, current_user_id: int) -> dict:
             db.commit()
 
     winning_team = teams_summary[0] if teams_summary else None
+    winning_participant = participant_list[0] if participant_list else None
 
     # Get current question for the calling user's team if game is active
     current_question_data = None
@@ -347,7 +356,7 @@ def get_room_state(db: Session, room_code: str, current_user_id: int) -> dict:
         "participants": participant_list,
         "teams_summary": teams_summary,
         "my_team": my_team_data,
-        "winner": winning_team,
+        "winner": winning_participant,
         "winning_team": winning_team,
         "is_host": (room.host_id == current_user_id),
         "is_admin": is_admin,

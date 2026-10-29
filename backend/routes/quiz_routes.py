@@ -53,7 +53,9 @@ def answer_question(
     db: Session = Depends(get_db)
 ):
     """Submit an answer for the current question."""
-    result = submit_answer(db, attempt_id, current_user.id, data.question_id, data.selected_answer)
+    result = submit_answer(
+        db, attempt_id, current_user.id, data.question_id, data.selected_answer, data.client_time_seconds
+    )
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])

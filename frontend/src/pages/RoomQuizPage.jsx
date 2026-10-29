@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { roomAPI } from '../api';
 import { sounds } from '../utils/audio';
-import WinnerDashboard, { formatTime, formatSpeed } from '../components/WinnerDashboard';
+import WinnerDashboard, { formatTime } from '../components/WinnerDashboard';
 import './RoomQuizPage.css';
 
 const CATEGORY_COLOR = {
@@ -186,115 +186,48 @@ export default function RoomQuizPage() {
 
   // ── Render Completed / Winner Dashboard Screen ──────────────────────────────
   if (allTeamsFinished) {
-    // If user is Admin OR if Admin released the final leaderboard to all users
-    if (isAdmin || isLeaderboardReleased) {
-      return (
-        <div className="room-quiz-page podium-view" style={{ '--accent': color }}>
-          {isAdmin && (
-            <div className="admin-decision-banner">
-              <div className="admin-badge-row">
-                <span className="admin-crown-icon">👑</span>
-                <div className="admin-title-box">
-                  <h2 className="admin-banner-heading">Room Admin Command — Leaderboard &amp; Winner Decision</h2>
-                  <p className="admin-banner-desc">
-                    You have exclusive admin access to evaluate all squads and users. Rankings are decided by <strong>1. Max Correct (🎯)</strong> &amp; <strong>2. Fastest Timing (⏱️)</strong>.
-                  </p>
-                </div>
-              </div>
-              <div className="admin-action-row">
-                {!isLeaderboardReleased ? (
-                  <button
-                    id="announce-winner-btn"
-                    className="btn-admin-announce"
-                    onClick={handleReleaseLeaderboard}
-                    disabled={releasing}
-                  >
-                    {releasing ? 'Broadcasting…' : '📢 Announce Official Winner to All Divers'}
-                  </button>
-                ) : (
-                  <span className="badge-announced">✓ Official Winner &amp; Standings Broadcasted to Room</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <WinnerDashboard
-            participants={participants}
-            teamsSummary={teams_summary}
-            totalQuestions={total_questions}
-            currentUserId={current_user_id}
-            currentUsername={user?.username}
-            category={category}
-            onBackHome={() => navigate('/categories')}
-            onPlayAgain={() => navigate(`/room/${roomCode}`)}
-            isRoom={true}
-            isAdmin={isAdmin}
-          />
-        </div>
-      );
-    }
-
-    // ── Non-Admin User View: Leaderboard Reserved For Admin ───────────────────
     return (
-      <div className="room-quiz-page awaiting-admin-page" style={{ '--accent': color }}>
-        <div className="awaiting-admin-card">
-          <div className="ocean-spin">🏁</div>
-          <h1 className="awaiting-title">Expedition Completed!</h1>
-          <p className="awaiting-subtitle">
-            All reef squads have finished the 30-question dive.
-          </p>
-
-          {/* Your Squad Performance Box */}
-          <div className="my-squad-performance-box">
-            <span className="squad-box-header">🛡️ Your Squad Performance ({my_team?.team_name})</span>
-            <div className="squad-box-metrics">
-              <div className="sbox-metric">
-                <span className="sbox-val">🎯 {my_team?.correct_answers ?? 0} / {total_questions}</span>
-                <span className="sbox-lbl">Correct Questions</span>
-              </div>
-              <div className="sbox-metric">
-                <span className="sbox-val">⏱️ {formatTime(my_team?.total_time_seconds)}</span>
-                <span className="sbox-lbl">Squad Timing</span>
-              </div>
-              <div className="sbox-metric">
-                <span className="sbox-val">⚡ {formatSpeed(my_team?.total_time_seconds, (my_team?.correct_answers || 0) + (my_team?.wrong_answers || 0))}</span>
-                <span className="sbox-lbl">Speed Rate</span>
-              </div>
-              <div className="sbox-metric">
-                <span className="sbox-val">⭐ {my_team?.score ?? 0} pts</span>
-                <span className="sbox-lbl">Reef Score</span>
+      <div className="room-quiz-page podium-view" style={{ '--accent': color }}>
+        {isAdmin && (
+          <div className="admin-decision-banner">
+            <div className="admin-badge-row">
+              <span className="admin-crown-icon">👑</span>
+              <div className="admin-title-box">
+                <h2 className="admin-banner-heading">Room Admin Command — Standings &amp; Winner Verification</h2>
+                <p className="admin-banner-desc">
+                  Final standings decided by <strong>1. Actual Final Score (⭐)</strong> &bull; <strong>2. Correct Questions (🎯)</strong> &bull; <strong>3. Fastest Timing (⏱️)</strong>.
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Admin Decision Notice Box */}
-          <div className="admin-only-notice-card">
-            <div className="admin-lock-icon">🔒</div>
-            <div className="admin-notice-info">
-              <h3>Final Leaderboard Restricted to Admin</h3>
-              <p>
-                To ensure a fair evaluation, the full leaderboard of all users is displayed to <strong>Room Admin ({room.host_username})</strong> only.
-              </p>
-              <div className="admin-status-pill">
-                ⚖️ <strong>Winner Decision in Progress:</strong> The Admin is currently reviewing all squads' completion times and correct answer totals to decide the reef champion.
-              </div>
+            <div className="admin-action-row">
+              {!isLeaderboardReleased ? (
+                <button
+                  id="announce-winner-btn"
+                  className="btn-admin-announce"
+                  onClick={handleReleaseLeaderboard}
+                  disabled={releasing}
+                >
+                  {releasing ? 'Broadcasting…' : '📢 Broadcast Official Confirmation to All Divers'}
+                </button>
+              ) : (
+                <span className="badge-announced">✓ Official Standings Confirmed for Room</span>
+              )}
             </div>
           </div>
+        )}
 
-          <div className="awaiting-pulse-row">
-            <div className="ocean-spin-sm">🐠</div>
-            <span>Waiting for Room Admin <strong>{room.host_username}</strong> to announce the official winner…</span>
-          </div>
-
-          <div className="awaiting-btn-row">
-            <button className="btn-return-lobby" onClick={() => navigate('/categories')}>
-              ← Return to Categories
-            </button>
-            <button className="btn-refresh-status" onClick={fetchRoomState}>
-              Check Winner Announcement 🔄
-            </button>
-          </div>
-        </div>
+        <WinnerDashboard
+          participants={participants}
+          teamsSummary={teams_summary}
+          totalQuestions={total_questions}
+          currentUserId={current_user_id}
+          currentUsername={user?.username}
+          category={category}
+          onBackHome={() => navigate('/categories')}
+          onPlayAgain={() => navigate(`/room/${roomCode}`)}
+          isRoom={true}
+          isAdmin={isAdmin}
+        />
       </div>
     );
   }

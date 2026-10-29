@@ -4,25 +4,47 @@ import './WinnerDashboard.css';
 const FISH_ICONS = ['🐠', '🐡', '🐟', '🐙', '🐬', '🦈'];
 
 export function formatTime(seconds) {
-  if (seconds === undefined || seconds === null) return '—';
-  if (seconds <= 0) return '0s';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  if (seconds === undefined || seconds === null || isNaN(seconds)) return '—';
+  const total = Math.max(0, Math.floor(seconds));
+  if (total === 0) return '0s';
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+
+  if (h > 0) {
+    return `${h}h ${m}m ${s < 10 ? '0' : ''}${s}s`;
+  }
   return m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`;
 }
 
 export function formatSpeed(seconds, answeredCount) {
-  if (!seconds || !answeredCount || answeredCount <= 0) return '—';
+  if (!seconds || !answeredCount || answeredCount <= 0 || isNaN(seconds)) return '—';
   const perQ = (seconds / answeredCount).toFixed(1);
   return `${perQ}s / Q`;
 }
 
+function assignCompetitionRanks(items, getScoreKey) {
+  let lastRank = 1;
+  return items.map((item, index) => {
+    if (index > 0) {
+      const prev = items[index - 1];
+      const isTie = getScoreKey(item) === getScoreKey(prev);
+      if (isTie) {
+        return { ...item, rank: prev.rank, isTie: true };
+      }
+      lastRank = index + 1;
+    }
+    return { ...item, rank: lastRank, isTie: false };
+  });
+}
+
 /**
  * WinnerDashboard — Comprehensive winner screen decided on the basis of:
- * 1. More number of questions answered correctly (Primary)
- * 2. Quick answering / timing (Secondary speed factor)
+ * 1. Actual Final Score (Primary)
+ * 2. More number of questions answered correctly (Secondary tie-breaker)
+ * 3. Quick answering / timing (Tertiary speed factor)
  *
- * Displays timing and number of corrected questions for both Teams and Solo members.
+ * Handles ties consistently and displays timing and statistics for Teams and Explorers.
  */
 export default function WinnerDashboard({
   participants = [],
@@ -37,30 +59,34 @@ export default function WinnerDashboard({
   isAdmin = false,
 }) {
   // Sort participants by:
-  // 1. More number of questions answered correctly (DESC)
-  // 2. Quick answering / timing (ASC, lowest seconds)
-  // 3. Score (DESC)
+  // 1. Final Score (DESC)
+  // 2. Correct questions (DESC)
+  // 3. Quick answering / timing (ASC, lowest seconds)
   const sortedParticipants = useMemo(() => {
-    return [...participants].sort((a, b) => {
-      // 1. More correct questions
+    const list = [...participants].sort((a, b) => {
+      // 1. Score
+      const scoreDiff = (b.score || 0) - (a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      // 2. More correct questions
       const correctDiff = (b.correct_answers || 0) - (a.correct_answers || 0);
       if (correctDiff !== 0) return correctDiff;
 
-      // 2. Quick answering / timing (fastest time wins)
-      const timeA = a.total_time_seconds || 999999;
-      const timeB = b.total_time_seconds || 999999;
-      if (timeA !== timeB) return timeA - timeB;
-
-      // 3. Score
-      return (b.score || 0) - (a.score || 0);
+      // 3. Quick answering / timing (fastest time wins)
+      const timeA = (a.total_time_seconds && a.total_time_seconds > 0) ? a.total_time_seconds : 999999;
+      const timeB = (b.total_time_seconds && b.total_time_seconds > 0) ? b.total_time_seconds : 999999;
+      return timeA - timeB;
     });
+
+    return assignCompetitionRanks(list, (p) => `${p.score || 0}_${p.correct_answers || 0}_${p.total_time_seconds || 0}`);
   }, [participants]);
 
-  // Sort teams strictly:
-  // 1. Highest correct questions (DESC)
-  // 2. Fastest total timing (ASC)
-  // 3. Score (DESC)
+  // Sort teams strictly by:
+  // 1. Final Team Score (DESC)
+  // 2. Highest correct questions (DESC)
+  // 3. Fastest total timing (ASC)
   const sortedTeams = useMemo(() => {
+    let list = [];
     if (!teamsSummary || teamsSummary.length === 0) {
       // Build from participants if not provided
       const dict = {};
@@ -93,38 +119,32 @@ export default function WinnerDashboard({
         }
       });
 
-      const list = Object.values(dict).map((t) => {
+      list = Object.values(dict).map((t) => {
         const totalAns = (t.correct_answers || 0) + (t.wrong_answers || 0);
         return {
           ...t,
           accuracy: totalAns > 0 ? Math.round((t.correct_answers / totalAns) * 100) : 0,
         };
       });
-
-      return list.sort((a, b) => {
-        const corrA = a.correct_answers ?? a.total_correct ?? 0;
-        const corrB = b.correct_answers ?? b.total_correct ?? 0;
-        if (corrB !== corrA) return corrB - corrA;
-
-        const timeA = a.total_time_seconds || 999999;
-        const timeB = b.total_time_seconds || 999999;
-        if (timeA !== timeB) return timeA - timeB;
-
-        return (b.score ?? b.total_score ?? 0) - (a.score ?? a.total_score ?? 0);
-      });
+    } else {
+      list = [...teamsSummary];
     }
 
-    return [...teamsSummary].sort((a, b) => {
+    list.sort((a, b) => {
+      const scoreA = a.score ?? a.total_score ?? 0;
+      const scoreB = b.score ?? b.total_score ?? 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
       const corrA = a.correct_answers ?? a.total_correct ?? a.avg_correct ?? 0;
       const corrB = b.correct_answers ?? b.total_correct ?? b.avg_correct ?? 0;
       if (corrB !== corrA) return corrB - corrA;
 
-      const timeA = a.total_time_seconds || 999999;
-      const timeB = b.total_time_seconds || 999999;
-      if (timeA !== timeB) return timeA - timeB;
-
-      return (b.score ?? b.total_score ?? 0) - (a.score ?? a.total_score ?? 0);
+      const timeA = (a.total_time_seconds && a.total_time_seconds > 0) ? a.total_time_seconds : 999999;
+      const timeB = (b.total_time_seconds && b.total_time_seconds > 0) ? b.total_time_seconds : 999999;
+      return timeA - timeB;
     });
+
+    return assignCompetitionRanks(list, (t) => `${t.score ?? t.total_score ?? 0}_${t.correct_answers ?? t.total_correct ?? 0}_${t.total_time_seconds || 0}`);
   }, [participants, teamsSummary]);
 
   // Check if any team exists that isn't just "Solo"
@@ -157,7 +177,7 @@ export default function WinnerDashboard({
       <div className="winner-criteria-pill">
         <span className="criteria-icon">⚖️</span>
         <span className="criteria-text">
-          Standings Decided By: <strong>1. Max Correct Questions (🎯)</strong> &amp; <strong>2. Fastest Timing (⏱️)</strong>
+          Standings Decided By: <strong>1. Final Score (⭐)</strong> &bull; <strong>2. Correct Questions (🎯)</strong> &bull; <strong>3. Fastest Timing (⏱️)</strong>
         </span>
       </div>
 
@@ -363,7 +383,10 @@ export default function WinnerDashboard({
             </thead>
             <tbody>
               {sortedTeams.map((team, idx) => {
-                const isChampion = idx === 0;
+                const rank = team.rank || (idx + 1);
+                const isTie = !!team.isTie;
+                const rankDisplay = rank === 1 ? (isTie ? '🥇 1st (Tie)' : '🥇 1st') : rank === 2 ? (isTie ? '🥈 2nd (Tie)' : '🥈 2nd') : rank === 3 ? (isTie ? '🥉 3rd (Tie)' : '🥉 3rd') : `#${rank}${isTie ? ' (Tie)' : ''}`;
+                const isChampion = rank === 1;
                 const correct = team.correct_answers ?? team.total_correct ?? 0;
                 const wrong = team.wrong_answers ?? team.total_wrong ?? 0;
                 const totalAns = correct + wrong;
@@ -373,11 +396,11 @@ export default function WinnerDashboard({
                 return (
                   <tr key={team.team_name} className={`table-row ${isChampion ? 'champion-row' : ''}`}>
                     <td className="rank-cell">
-                      {idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`}
+                      {rankDisplay}
                     </td>
                     <td className="team-name-cell">
                       <strong>{team.team_name}</strong>
-                      {isChampion && <span className="winner-chip">Champion</span>}
+                      {isChampion && <span className="winner-chip">{isTie ? 'Co-Champion' : 'Champion'}</span>}
                     </td>
                     <td className="members-cell">
                       <span className="members-count-tag">{team.members_count || team.members?.length || 1} player{(team.members_count || team.members?.length) > 1 ? 's' : ''}</span>
@@ -416,17 +439,20 @@ export default function WinnerDashboard({
             </thead>
             <tbody>
               {sortedParticipants.map((p, idx) => {
+                const rank = p.rank || (idx + 1);
+                const isTie = !!p.isTie;
+                const rankDisplay = rank === 1 ? (isTie ? '🥇 1st (Tie)' : '🥇 1st') : rank === 2 ? (isTie ? '🥈 2nd (Tie)' : '🥈 2nd') : rank === 3 ? (isTie ? '🥉 3rd (Tie)' : '🥉 3rd') : `#${rank}${isTie ? ' (Tie)' : ''}`;
                 const totalAns = (p.correct_answers || 0) + (p.wrong_answers || 0);
                 const acc = totalAns > 0 ? Math.round(((p.correct_answers || 0) / totalAns) * 100) : 0;
                 const isMe =
                   (currentUserId && p.user_id === currentUserId) ||
                   (currentUsername && p.username === currentUsername);
-                const isWinner = idx === 0;
+                const isWinner = rank === 1;
 
                 return (
                   <tr key={p.user_id || p.username} className={`table-row ${isWinner ? 'champion-row' : ''} ${isMe ? 'is-me-row' : ''}`}>
                     <td className="rank-cell">
-                      {idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`}
+                      {rankDisplay}
                     </td>
                     <td className="player-col-cell">
                       <span className="player-fish">{FISH_ICONS[idx % FISH_ICONS.length]}</span>

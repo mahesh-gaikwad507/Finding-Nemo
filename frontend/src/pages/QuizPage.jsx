@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { quizAPI } from '../api';
 import { sounds } from '../utils/audio';
+import { formatTime } from './ResultPage';
 import './QuizPage.css';
 
 const TOTAL = 30;
@@ -28,7 +29,18 @@ export default function QuizPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(sounds.isMuted());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const timerRef = useRef(null);
+  const sessionStartRef = useRef(Date.now());
+
+  // Active quiz session timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - sessionStartRef.current) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchState = useCallback(async () => {
     try {
@@ -62,10 +74,13 @@ export default function QuizPage() {
     setSubmitting(true);
     sounds.playBubble();
 
+    const currentSeconds = Math.max(1, Math.floor((Date.now() - sessionStartRef.current) / 1000));
+
     try {
       const res = await quizAPI.answer(attemptId, {
         question_id: state.question.id,
         selected_answer: letter,
+        client_time_seconds: currentSeconds,
       });
       setFeedback(res.data);
       if (res.data.is_correct) {
@@ -134,6 +149,7 @@ export default function QuizPage() {
         </div>
 
         <div className="quiz-stats">
+          <StatBadge icon="⏱️" value={formatTime(elapsedSeconds)} label="Time" color="#00f0ff" />
           <StatBadge icon="✅" value={correct_answers} label="Correct" color="#34d399" />
           <StatBadge icon="❌" value={wrong_answers} label="Wrong" color="#f87171" />
           <StatBadge icon="⭐" value={score} label="Score" color="#fbbf24" />

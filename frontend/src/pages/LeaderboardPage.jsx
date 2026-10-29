@@ -18,16 +18,20 @@ const TABS = [
 ];
 
 function formatTime(s) {
-  if (s === undefined || s === null) return '—';
-  if (s <= 0) return '0s';
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
+  if (s === undefined || s === null || isNaN(s)) return '—';
+  const total = Math.max(0, Math.floor(s));
+  if (total === 0) return '0s';
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  if (h > 0) return `${h}h ${m}m ${sec < 10 ? '0' : ''}${sec}s`;
   return m > 0 ? `${m}m ${sec < 10 ? '0' : ''}${sec}s` : `${sec}s`;
 }
 
-function formatSpeed(s, totalQuestions = 30) {
-  if (!s || !totalQuestions) return '—';
-  return `${(s / totalQuestions).toFixed(1)}s / Q`;
+function formatSpeed(s, answeredCount) {
+  if (!s || !answeredCount || answeredCount <= 0 || isNaN(s)) return '—';
+  const perQ = (s / answeredCount).toFixed(1);
+  return `${perQ}s / Q`;
 }
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -118,7 +122,7 @@ export default function LeaderboardPage() {
                 ⏱️ {formatTime(champion.total_time_seconds)} Total Timing
               </span>
               <span className="badge-pill gold">
-                ⚡ {formatSpeed(champion.total_time_seconds, 30)}
+                ⚡ {formatSpeed(champion.total_time_seconds, (champion.correct_answers || 0) + (champion.wrong_answers || 0))}
               </span>
               <span className="badge-pill purple">
                 ⭐ {champion.score} Points
@@ -172,16 +176,16 @@ export default function LeaderboardPage() {
                   >
                     <td className="lb-rank">
                       {entry.rank <= 3 ? (
-                        <span className="medal">{MEDAL[entry.rank - 1]}</span>
+                        <span className="medal">{MEDAL[entry.rank - 1]}{entry.is_tie ? ' (Tie)' : ''}</span>
                       ) : (
-                        <span className="rank-num">#{entry.rank}</span>
+                        <span className="rank-num">#{entry.rank}{entry.is_tie ? ' (Tie)' : ''}</span>
                       )}
                     </td>
                     <td className="lb-player">
                       <span className="lb-avatar">{entry.username[0].toUpperCase()}</span>
                       <span className="lb-name">{entry.username}</span>
                       {isMe && <span className="me-badge">You</span>}
-                      {isFirst && <span className="champ-tag">Winner</span>}
+                      {isFirst && <span className="champ-tag">{entry.is_tie ? 'Co-Winner' : 'Winner'}</span>}
                     </td>
                     <td className="lb-correct">
                       <span className="correct-count-bold">{entry.correct_answers}/30</span>
@@ -191,7 +195,7 @@ export default function LeaderboardPage() {
                       <span className="time-badge">⏱️ {formatTime(entry.total_time_seconds)}</span>
                     </td>
                     <td className="lb-speed">
-                      <span className="speed-badge">{formatSpeed(entry.total_time_seconds, 30)}</span>
+                      <span className="speed-badge">{formatSpeed(entry.total_time_seconds, (entry.correct_answers || 0) + (entry.wrong_answers || 0))}</span>
                     </td>
                     <td className="lb-score">{entry.score} pts</td>
                     <td className="lb-accuracy">{entry.accuracy}%</td>

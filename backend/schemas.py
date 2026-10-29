@@ -56,6 +56,7 @@ class QuestionOut(BaseModel):
 class AnswerSubmit(BaseModel):
     question_id: int
     selected_answer: str = Field(..., pattern=r"^[ABCD]$")
+    client_time_seconds: Optional[int] = None
 
 
 class AnswerFeedback(BaseModel):

@@ -10,17 +10,24 @@ import './ResultPage.css';
 const CATEGORY_EMOJI = { python: '🐍', sql: '🗄️', excel: '📊' };
 const CATEGORY_COLOR = { python: '#00f0ff', sql: '#10b981', excel: '#f59e0b' };
 
-function formatTime(seconds) {
-  if (seconds === undefined || seconds === null) return '—';
-  if (seconds <= 0) return '0s';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+export function formatTime(seconds) {
+  if (seconds === undefined || seconds === null || isNaN(seconds)) return '—';
+  const total = Math.max(0, Math.floor(seconds));
+  if (total === 0) return '0s';
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+
+  if (h > 0) {
+    return `${h}h ${m}m ${s < 10 ? '0' : ''}${s}s`;
+  }
   return m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`;
 }
 
-function formatSpeed(seconds, totalQuestions) {
-  if (!seconds || !totalQuestions) return '—';
-  return `${(seconds / totalQuestions).toFixed(1)}s / Q`;
+export function formatSpeed(seconds, answeredCount) {
+  if (!seconds || !answeredCount || answeredCount <= 0 || isNaN(seconds)) return '—';
+  const perQ = (seconds / answeredCount).toFixed(1);
+  return `${perQ}s / Q`;
 }
 
 export default function ResultPage() {
@@ -63,6 +70,7 @@ export default function ResultPage() {
     total_questions, accuracy, total_time_seconds, nemo_reached_home,
   } = result;
 
+  const answeredCount = (correct_answers || 0) + (wrong_answers || 0);
   const color = CATEGORY_COLOR[category] || '#00f0ff';
   const grade = score >= 250 ? 'S' : score >= 200 ? 'A' : score >= 150 ? 'B' : score >= 100 ? 'C' : 'D';
   const gradeColor = grade === 'S' ? '#fbbf24' : grade === 'A' ? '#34d399' : grade === 'B' ? '#60a5fa' : grade === 'C' ? '#fb923c' : '#f87171';
@@ -86,10 +94,10 @@ export default function ResultPage() {
           </p>
         </div>
 
-        {/* Winner Criteria Banner */}
+        {/* Evaluation Banner (Solo Mode) */}
         <div className="result-criteria-pill">
-          <span>⚖️ Winner Rank Decided By:</span>
-          <strong>Most Correct Questions + Fastest Answering Timing</strong>
+          <span>🎯 Mission Evaluation:</span>
+          <strong>Accuracy &bull; Answering Speed &bull; Total Score</strong>
         </div>
 
         {/* Grade */}
@@ -97,14 +105,14 @@ export default function ResultPage() {
           <div className="grade-ring">
             <span className="grade-letter">{grade}</span>
           </div>
-          <span className="grade-label">Diving Rank</span>
+          <span className="grade-label">Performance Grade</span>
         </div>
 
         {/* Stats grid */}
         <div className="result-stats">
           <StatCard icon="🎯" label="Correct Questions" value={`${correct_answers} / ${total_questions}`} sub={`${accuracy}% Accuracy`} color="#34d399" />
-          <StatCard icon="⏱️" label="Total Timing" value={formatTime(total_time_seconds)} sub="Fastest wins!" color="#00f0ff" />
-          <StatCard icon="⚡" label="Answering Speed" value={formatSpeed(total_time_seconds, total_questions)} color="#fbbf24" />
+          <StatCard icon="⏱️" label="Total Timing" value={formatTime(total_time_seconds)} sub="Current session" color="#00f0ff" />
+          <StatCard icon="⚡" label="Answering Speed" value={formatSpeed(total_time_seconds, answeredCount)} color="#fbbf24" />
           <StatCard icon="⭐" label="Total Score" value={score} sub={`/ ${total_questions * 10} pts`} color="#fbbf24" />
           <StatCard icon="❌" label="Mistakes" value={wrong_answers} sub="Questions missed" color="#f87171" />
           <StatCard icon="🏠" label="Nemo home?" value={nemo_reached_home ? 'Yes! Safe!' : 'Partially safe'} color={nemo_reached_home ? '#34d399' : '#38bdf8'} />

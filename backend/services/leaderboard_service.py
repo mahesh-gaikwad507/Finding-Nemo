@@ -26,28 +26,49 @@ def get_category_leaderboard(db: Session, category: str, limit: int = 50) -> lis
             )
         )
         .order_by(
+            desc(QuizAttempt.score),
             desc(QuizAttempt.correct_answers),
-            asc(QuizAttempt.total_time_seconds),
-            desc(QuizAttempt.score)
+            asc(QuizAttempt.total_time_seconds)
         )
         .limit(limit)
         .all()
     )
 
     entries = []
-    for rank, (attempt, username) in enumerate(results, 1):
+    last_score = None
+    last_correct = None
+    last_time = None
+    current_rank = 1
+
+    for idx, (attempt, username) in enumerate(results, 1):
         total_answered = attempt.correct_answers + attempt.wrong_answers
         accuracy = round((attempt.correct_answers / total_answered * 100), 2) if total_answered > 0 else 0
+        total_time = attempt.total_time_seconds or 0
+
+        # Consistent tie handling (1224 competition ranking)
+        is_tie = (
+            last_score is not None and
+            attempt.score == last_score and
+            attempt.correct_answers == last_correct and
+            total_time == last_time
+        )
+        if not is_tie:
+            current_rank = idx
+
+        last_score = attempt.score
+        last_correct = attempt.correct_answers
+        last_time = total_time
 
         entries.append({
-            "rank": rank,
+            "rank": current_rank,
             "username": username,
             "score": attempt.score,
             "correct_answers": attempt.correct_answers,
             "wrong_answers": attempt.wrong_answers,
             "accuracy": accuracy,
-            "total_time_seconds": attempt.total_time_seconds or 0,
-            "completed_at": attempt.completed_at
+            "total_time_seconds": total_time,
+            "completed_at": attempt.completed_at,
+            "is_tie": is_tie
         })
 
     return entries
@@ -56,38 +77,16 @@ def get_category_leaderboard(db: Session, category: str, limit: int = 50) -> lis
 def get_overall_leaderboard(db: Session, limit: int = 50) -> list:
     """Get overall leaderboard across all categories.
     
-    Winner decided on the basis of: most correct answers, then quickest time (speed), then score.
+    Winner decided on the basis of: highest final score, then most correct answers, then quickest time (speed).
+    Handles ties consistently.
     """
-    # Get best attempt per user (most correct, then shortest time)
-    subquery = (
-        db.query(
-            QuizAttempt.user_id,
-            func.max(QuizAttempt.correct_answers).label("best_correct"),
-            func.min(QuizAttempt.total_time_seconds).label("best_time")
-        )
-        .filter(
-            and_(
-                QuizAttempt.is_completed == True,
-                QuizAttempt.correct_answers + QuizAttempt.wrong_answers == 30
-            )
-        )
-        .group_by(QuizAttempt.user_id)
-        .subquery()
-    )
-
-    results = (
+    # Get all completed attempts
+    all_completed = (
         db.query(
             QuizAttempt,
             User.username
         )
         .join(User, User.id == QuizAttempt.user_id)
-        .join(
-            subquery,
-            and_(
-                QuizAttempt.user_id == subquery.c.user_id,
-                QuizAttempt.correct_answers == subquery.c.best_correct
-            )
-        )
         .filter(
             and_(
                 QuizAttempt.is_completed == True,
@@ -95,35 +94,58 @@ def get_overall_leaderboard(db: Session, limit: int = 50) -> list:
             )
         )
         .order_by(
+            desc(QuizAttempt.score),
             desc(QuizAttempt.correct_answers),
-            asc(QuizAttempt.total_time_seconds),
-            desc(QuizAttempt.score)
+            asc(QuizAttempt.total_time_seconds)
         )
-        .limit(limit)
         .all()
     )
 
     entries = []
     seen_users = set()
-    rank = 0
-    for attempt, username in results:
+    filtered_results = []
+    for attempt, username in all_completed:
         if username in seen_users:
             continue
         seen_users.add(username)
-        rank += 1
+        filtered_results.append((attempt, username))
+        if len(filtered_results) >= limit:
+            break
 
+    last_score = None
+    last_correct = None
+    last_time = None
+    current_rank = 1
+
+    for idx, (attempt, username) in enumerate(filtered_results, 1):
         total_answered = attempt.correct_answers + attempt.wrong_answers
         accuracy = round((attempt.correct_answers / total_answered * 100), 2) if total_answered > 0 else 0
+        total_time = attempt.total_time_seconds or 0
+
+        # Consistent tie handling (1224 competition ranking)
+        is_tie = (
+            last_score is not None and
+            attempt.score == last_score and
+            attempt.correct_answers == last_correct and
+            total_time == last_time
+        )
+        if not is_tie:
+            current_rank = idx
+
+        last_score = attempt.score
+        last_correct = attempt.correct_answers
+        last_time = total_time
 
         entries.append({
-            "rank": rank,
+            "rank": current_rank,
             "username": username,
             "score": attempt.score,
             "correct_answers": attempt.correct_answers,
             "wrong_answers": attempt.wrong_answers,
             "accuracy": accuracy,
-            "total_time_seconds": attempt.total_time_seconds or 0,
-            "completed_at": attempt.completed_at
+            "total_time_seconds": total_time,
+            "completed_at": attempt.completed_at,
+            "is_tie": is_tie
         })
 
     return entries
