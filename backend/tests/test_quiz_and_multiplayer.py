@@ -300,3 +300,67 @@ def test_multiplayer_room_completion_and_persistence(db_session):
     assert refresh_state["status"] == "completed"
     assert refresh_state["winning_team"]["team_name"] == "Team Dolphins"
     assert refresh_state["winning_team"]["score"] == 270
+
+
+def test_one_domain_per_team_locking_and_enforcement(db_session):
+    """Verify that completing a test in one domain locks the user/team to that field,
+    preventing them from taking quizzes or multiplayer rooms in any other domain,
+    while allowing replay in their chosen domain."""
+    # Seed questions for SQL as well
+    for i in range(1, 31):
+        q_sql = Question(
+            category="sql",
+            sequence_number=i,
+            clue=f"SQL Clue {i}",
+            question_text=f"SQL Question {i}",
+            option_a="Option A",
+            option_b="Option B",
+            option_c="Option C",
+            option_d="Option D",
+            correct_answer="A",
+            explanation="SQL Exp",
+            concept="SQL Concept",
+            difficulty="beginner"
+        )
+        db_session.add(q_sql)
+    db_session.commit()
+
+    # User 3 starts without a locked domain
+    user3 = db_session.query(User).filter(User.id == 3).first()
+    assert user3.locked_domain is None
+
+    # User 3 starts and finishes a Python quiz
+    attempt = start_new_game(db_session, user_id=3, category="python")
+    attempt.current_question = 30
+    db_session.commit()
+
+    # User 3 answers question 30 to complete the quiz
+    q30 = db_session.query(Question).filter(Question.category == "python", Question.sequence_number == 30).first()
+    res = submit_answer(db_session, attempt_id=attempt.id, user_id=3, question_id=q30.id, selected_answer="A")
+    assert res["is_completed"] is True
+
+    # User 3's domain is now permanently locked to 'python'
+    db_session.refresh(user3)
+    assert user3.locked_domain == "python"
+
+    # User 3 attempts to start an SQL solo quiz -> MUST BE REJECTED
+    with pytest.raises(ValueError, match="Domain locked"):
+        start_new_game(db_session, user_id=3, category="sql")
+
+    # User 3 attempts to create an SQL multiplayer room -> MUST BE REJECTED
+    with pytest.raises(ValueError, match="Domain locked"):
+        create_room(db_session, host_user_id=3, category="sql", team_name="Team Sharks")
+
+    # User 3 attempts to join an SQL room created by another user -> MUST BE REJECTED
+    user1 = db_session.query(User).filter(User.id == 1).first()
+    user1.locked_domain = None
+    db_session.commit()
+    sql_room = create_room(db_session, host_user_id=1, category="sql", team_name="Team SQL")
+
+    with pytest.raises(ValueError, match="Domain locked"):
+        join_room(db_session, user_id=3, room_code=sql_room.room_code, team_name="Team Guest")
+
+    # User 3 is allowed to play / retake their assigned domain (Python)
+    replay_attempt = start_new_game(db_session, user_id=3, category="python")
+    assert replay_attempt.category == "python"
+

@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { roomAPI } from '../api';
+import { roomAPI, quizAPI } from '../api';
 import { sounds } from '../utils/audio';
 import './RoomLobbyPage.css';
 
@@ -31,7 +31,7 @@ export default function RoomLobbyPage() {
 
   // Mode: if paramCode exists, we are in the lobby; else in create/join hub
   const [activeTab, setActiveTab] = useState('create'); // 'create' | 'join'
-  const [selectedCategory, setSelectedCategory] = useState('python');
+  const [selectedCategory, setSelectedCategory] = useState(user?.locked_domain || 'python');
   const [selectedTeam, setSelectedTeam] = useState('Team Clownfish');
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [roomData, setRoomData] = useState(null);
@@ -39,8 +39,19 @@ export default function RoomLobbyPage() {
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
+  const [lockedDomain, setLockedDomain] = useState(user?.locked_domain || null);
 
-  const pollIntervalRef = useRef(null);
+  useEffect(() => {
+    // Check real-time domain lock status
+    quizAPI.domainStatus()
+      .then((res) => {
+        if (res.data?.locked_domain) {
+          setLockedDomain(res.data.locked_domain);
+          setSelectedCategory(res.data.locked_domain);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Poll room status if inside a room
   const fetchRoom = useCallback(async (code) => {
@@ -357,19 +368,37 @@ export default function RoomLobbyPage() {
               <div className="form-group">
                 <label>Select Category</label>
                 <div className="category-options">
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      className={`cat-opt-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                      onClick={() => { setSelectedCategory(cat.id); sounds.playBubble(); }}
-                      style={{ '--accent-c': cat.color }}
-                    >
-                      <span className="cat-opt-emoji">{cat.emoji}</span>
-                      <span className="cat-opt-label">{cat.label}</span>
-                    </button>
-                  ))}
+                  {CATEGORIES.map((cat) => {
+                    const isLockedOut = lockedDomain && lockedDomain !== cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className={`cat-opt-btn ${selectedCategory === cat.id ? 'active' : ''} ${isLockedOut ? 'locked' : ''}`}
+                        onClick={() => {
+                          if (!isLockedOut) {
+                            setSelectedCategory(cat.id);
+                            sounds.playBubble();
+                          }
+                        }}
+                        disabled={isLockedOut}
+                        title={isLockedOut ? `Your team domain is locked to ${lockedDomain.toUpperCase()}` : ''}
+                        style={{ '--accent-c': cat.color }}
+                      >
+                        <span className="cat-opt-emoji">{cat.emoji}</span>
+                        <span className="cat-opt-label">
+                          {cat.label} {isLockedOut ? '🔒' : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {lockedDomain && (
+                  <div className="domain-enforced-inline-hint">
+                    <span>🔒</span>
+                    <span>Team Domain: <strong>{lockedDomain.toUpperCase()}</strong> (Each team is restricted to 1 field).</span>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">

@@ -30,9 +30,12 @@ export function formatSpeed(seconds, answeredCount) {
   return `${perQ}s / Q`;
 }
 
+import { useAuth } from '../context/AuthContext';
+
 export default function ResultPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
@@ -40,12 +43,13 @@ export default function ResultPage() {
     quizAPI.result(attemptId)
       .then((res) => {
         setResult(res.data);
+        if (refreshUser) refreshUser();
         if (res.data.nemo_reached_home || res.data.correct_answers >= 20) {
           sounds.playVictory();
         }
       })
       .catch(() => setError('Could not load results.'));
-  }, [attemptId]);
+  }, [attemptId, refreshUser]);
 
   if (error) {
     return (
@@ -98,6 +102,12 @@ export default function ResultPage() {
         <div className="result-criteria-pill">
           <span>🎯 Mission Evaluation:</span>
           <strong>Accuracy &bull; Answering Speed &bull; Total Score</strong>
+        </div>
+
+        {/* Domain Lock Confirmation (1 Team = 1 Field Rule) */}
+        <div className="domain-locked-confirmation-pill">
+          <span>🔒</span>
+          <span>Field Locked: <strong>{category?.toUpperCase()}</strong> &bull; (1 Team = 1 Field Active)</span>
         </div>
 
         {/* Grade */}

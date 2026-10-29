@@ -23,10 +23,17 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    locked_domain: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class DomainStatusResponse(BaseModel):
+    locked_domain: Optional[str] = None
+    is_locked: bool
+    allowed_categories: List[str]
 
 
 class TokenResponse(BaseModel):

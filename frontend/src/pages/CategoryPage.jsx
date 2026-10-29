@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { quizAPI } from '../api';
 import { sounds } from '../utils/audio';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './CategoryPage.css';
 
 const CATEGORIES = [
@@ -39,11 +39,23 @@ const CATEGORIES = [
 ];
 
 export default function CategoryPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [starting, setStarting] = useState(null);
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(sounds.isMuted());
+  const [lockedDomain, setLockedDomain] = useState(user?.locked_domain || null);
+
+  useEffect(() => {
+    // Check real-time domain lock status
+    quizAPI.domainStatus()
+      .then((res) => {
+        if (res.data?.locked_domain) {
+          setLockedDomain(res.data.locked_domain);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleSound = () => {
     const isM = sounds.toggleMute();
@@ -52,6 +64,13 @@ export default function CategoryPage() {
 
   const handleStart = async (categoryId) => {
     if (starting) return;
+
+    // Enforce 1-domain-per-team rule on client
+    if (lockedDomain && lockedDomain !== categoryId) {
+      setError(`Domain locked: Your team is registered for ${lockedDomain.toUpperCase()}. Competition rules permit only 1 field per team.`);
+      return;
+    }
+
     setStarting(categoryId);
     setError('');
     sounds.playSplash();
@@ -119,6 +138,19 @@ export default function CategoryPage() {
         <p>Help Nemo find his way home by mastering a skill. Pick a solo category or create a multiplayer room!</p>
       </div>
 
+      {/* 1 Domain Per Team Rule Banner */}
+      {lockedDomain && (
+        <div className="domain-enforced-banner">
+          <span className="domain-enforced-icon">🔒</span>
+          <div className="domain-enforced-content">
+            <div className="domain-enforced-title">1 Team = 1 Field Enforced</div>
+            <div className="domain-enforced-desc">
+              Your team completed the <strong>{lockedDomain.toUpperCase()}</strong> test. Under competition rules, each team can select only one field and play in that field. Other domains are locked.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Multiplayer Callout Banner */}
       <div className="multiplayer-banner">
         <div className="banner-left">
@@ -145,32 +177,53 @@ export default function CategoryPage() {
 
       {/* Cards */}
       <div className="cat-cards">
-        {CATEGORIES.map((cat) => (
-          <article
-            key={cat.id}
-            className="cat-card"
-            style={{ '--glow': cat.glow, '--gradient': cat.gradient, '--color': cat.color }}
-          >
-            <div className="cat-card-inner">
-              <span className="cat-emoji">{cat.emoji}</span>
-              <h2>{cat.label}</h2>
-              <p className="cat-desc">{cat.description}</p>
-              <div className="cat-badge">30 Questions</div>
-              <button
-                id={`start-${cat.id}-btn`}
-                className="cat-start-btn"
-                onClick={() => handleStart(cat.id)}
-                disabled={starting !== null}
-              >
-                {starting === cat.id ? (
-                  <span className="spinner-sm" />
+        {CATEGORIES.map((cat) => {
+          const isAssigned = lockedDomain && lockedDomain === cat.id;
+          const isLockedOut = lockedDomain && lockedDomain !== cat.id;
+
+          return (
+            <article
+              key={cat.id}
+              className={`cat-card ${isAssigned ? 'cat-card-assigned' : ''} ${isLockedOut ? 'cat-card-locked' : ''}`}
+              style={{ '--glow': cat.glow, '--gradient': cat.gradient, '--color': cat.color }}
+            >
+              <div className="cat-card-inner">
+                <span className="cat-emoji">{cat.emoji}</span>
+                <h2>{cat.label}</h2>
+                <p className="cat-desc">{cat.description}</p>
+                
+                {isAssigned ? (
+                  <div className="cat-badge badge-assigned">⭐ YOUR ASSIGNED DOMAIN</div>
+                ) : isLockedOut ? (
+                  <div className="cat-badge badge-locked">🔒 LOCKED (1 FIELD RULE)</div>
                 ) : (
-                  'Start Quiz →'
+                  <div className="cat-badge">30 Questions</div>
                 )}
-              </button>
-            </div>
-          </article>
-        ))}
+
+                <button
+                  id={`start-${cat.id}-btn`}
+                  className={`cat-start-btn ${isAssigned ? 'assigned' : ''} ${isLockedOut ? 'locked' : ''}`}
+                  onClick={() => handleStart(cat.id)}
+                  disabled={starting !== null || isLockedOut}
+                  title={isLockedOut ? `Your team domain is locked to ${lockedDomain.toUpperCase()}` : ''}
+                >
+                  {starting === cat.id ? (
+                    <span className="spinner-sm" />
+                  ) : isLockedOut ? (
+                    '🔒 Locked'
+                  ) : isAssigned ? (
+                    'Play Again →'
+                  ) : (
+                    'Start Quiz →'
+                  )}
+                </button>
+                {isLockedOut && (
+                  <div className="cat-lock-subtext">Each team is restricted to 1 field</div>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {/* Nemo swimming decoration */}

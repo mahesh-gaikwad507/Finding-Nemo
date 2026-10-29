@@ -43,6 +43,16 @@ def get_or_create_team(db: Session, room_id: int, team_name: str) -> RoomTeam:
 
 def create_room(db: Session, host_user_id: int, category: str, total_questions: int = 30, team_name: str = "Team Clownfish") -> Room:
     """Create a new multiplayer quiz room with collaborative teams."""
+    from services.quiz_service import get_user_locked_domain
+
+    # Enforce 1-domain-per-team rule: host cannot create room for another domain
+    locked = get_user_locked_domain(db, host_user_id)
+    if locked and category != locked:
+        raise ValueError(
+            f"Domain locked: Your team is registered for '{locked.upper()}'. "
+            f"You can only create multiplayer rooms for '{locked.upper()}'."
+        )
+
     # Ensure unique room code
     for _ in range(10):
         code = generate_room_code()
@@ -89,6 +99,16 @@ def join_room(db: Session, user_id: int, room_code: str, team_name: str = "Team 
     room = db.query(Room).filter(Room.room_code == room_code.upper()).first()
     if not room:
         return None
+
+    from services.quiz_service import get_user_locked_domain
+
+    # Enforce 1-domain-per-team rule: user cannot join room for another domain
+    locked = get_user_locked_domain(db, user_id)
+    if locked and room.category != locked:
+        raise ValueError(
+            f"Domain locked: This room is for '{room.category.upper()}', "
+            f"but your team is registered for '{locked.upper()}'."
+        )
 
     clean_team = team_name.strip() if team_name else "Team Clownfish"
 
@@ -483,6 +503,10 @@ def submit_room_answer(
         tm.total_time_seconds = team.total_time_seconds
         tm.is_finished = team.is_finished
         tm.finished_at = team.finished_at
+        if tm.is_finished:
+            u = db.query(User).filter(User.id == tm.user_id).first()
+            if u and not u.locked_domain:
+                u.locked_domain = room.category
 
     db.commit()
     db.refresh(team)

@@ -5,12 +5,54 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from models import Question, QuizAttempt, UserAnswer
+from typing import Optional
+from models import Question, QuizAttempt, UserAnswer, User
 
 
 TOTAL_QUESTIONS = 30
 CORRECT_POINTS = 10
 WRONG_PENALTY = 2
+
+
+def get_user_locked_domain(db: Session, user_id: int) -> Optional[str]:
+    """Retrieve user's locked domain.
+    
+    If locked_domain is not yet set on the user record, check whether the user has
+    completed any solo quiz attempt or finished any multiplayer room. If found, lock
+    and persist user.locked_domain so that rules are strictly enforced.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    if user.locked_domain:
+        return user.locked_domain
+
+    # Check for completed quiz attempt
+    completed_attempt = db.query(QuizAttempt).filter(
+        and_(QuizAttempt.user_id == user_id, QuizAttempt.is_completed == True)
+    ).order_by(QuizAttempt.completed_at.asc(), QuizAttempt.id.asc()).first()
+
+    if completed_attempt:
+        user.locked_domain = completed_attempt.category
+        db.commit()
+        db.refresh(user)
+        return user.locked_domain
+
+    # Check for completed multiplayer room
+    try:
+        from models import RoomParticipant
+        finished_part = db.query(RoomParticipant).filter(
+            and_(RoomParticipant.user_id == user_id, RoomParticipant.is_finished == True)
+        ).first()
+        if finished_part and finished_part.room:
+            user.locked_domain = finished_part.room.category
+            db.commit()
+            db.refresh(user)
+            return user.locked_domain
+    except Exception:
+        pass
+
+    return None
 
 
 def start_new_game(db: Session, user_id: int, category: str) -> QuizAttempt:
@@ -20,6 +62,14 @@ def start_new_game(db: Session, user_id: int, category: str) -> QuizAttempt:
     Stale or unplayed attempts have their start timestamp refreshed, and abandoned
     attempts older than 30 minutes are finalized so a fresh session begins.
     """
+    # Enforce 1-domain-per-team rule: 1 team can select only one field and play in that field
+    locked = get_user_locked_domain(db, user_id)
+    if locked and category != locked:
+        raise ValueError(
+            f"Domain locked: Your team is registered for '{locked.upper()}'. "
+            f"In accordance with competition rules, each team can only select 1 field and cannot play '{category.upper()}'."
+        )
+
     now = datetime.now(timezone.utc)
 
     # Check if there's an incomplete attempt in this category
@@ -223,6 +273,11 @@ def submit_answer(
         attempt.is_completed = True
         attempt.completed_at = now
         attempt.total_time_seconds = session_duration
+
+        # Automatically lock user's domain upon completing the test
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and not user.locked_domain:
+            user.locked_domain = attempt.category
 
     db.commit()
     db.refresh(attempt)

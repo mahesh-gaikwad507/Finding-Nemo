@@ -23,7 +23,11 @@ def create_new_room(
     db: Session = Depends(get_db)
 ):
     """Create a new multiplayer quiz room."""
-    room = create_room(db, current_user.id, data.category, data.total_questions, data.team_name or "Solo")
+    try:
+        room = create_room(db, current_user.id, data.category, data.total_questions, data.team_name or "Solo")
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     state = get_room_state(db, room.room_code, current_user.id)
     if not state:
         raise HTTPException(status_code=500, detail="Failed to initialize room")
@@ -37,7 +41,11 @@ def join_existing_room(
     db: Session = Depends(get_db)
 ):
     """Join an existing multiplayer room using room code."""
-    room = join_room(db, current_user.id, data.room_code, data.team_name or "Solo")
+    try:
+        room = join_room(db, current_user.id, data.room_code, data.team_name or "Solo")
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     if not room:
         raise HTTPException(status_code=404, detail="Room not found or cannot be joined")
 

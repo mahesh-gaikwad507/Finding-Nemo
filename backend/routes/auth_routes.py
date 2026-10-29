@@ -41,12 +41,15 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     # Generate token
     token = create_access_token(data={"sub": str(user.id)})
 
+    from services.quiz_service import get_user_locked_domain
+
     return TokenResponse(
         access_token=token,
         user=UserResponse(
             id=user.id,
             username=user.username,
             email=user.email,
+            locked_domain=user.locked_domain,
             created_at=user.created_at
         )
     )
@@ -63,6 +66,9 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
             detail="Invalid username or password"
         )
 
+    from services.quiz_service import get_user_locked_domain
+    locked = get_user_locked_domain(db, user.id)
+
     token = create_access_token(data={"sub": str(user.id)})
 
     return TokenResponse(
@@ -71,17 +77,23 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
             id=user.id,
             username=user.username,
             email=user.email,
+            locked_domain=locked,
             created_at=user.created_at
         )
     )
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get the current authenticated user's profile."""
+    from services.quiz_service import get_user_locked_domain
+    locked = get_user_locked_domain(db, current_user.id)
+
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
         email=current_user.email,
+        locked_domain=locked,
         created_at=current_user.created_at
     )
+

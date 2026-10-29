@@ -7,17 +7,23 @@ from database import get_db
 from models import User
 from schemas import StartGameRequest, GameStateResponse, AnswerSubmit, AnswerFeedback
 from auth import get_current_user
+from typing import Optional
 from services.quiz_service import (
-    start_new_game, get_game_state, submit_answer, get_game_result, abandon_game
+    start_new_game, get_game_state, submit_answer, get_game_result, abandon_game, get_user_locked_domain
 )
+
 
 router = APIRouter(prefix="/api/quiz", tags=["Quiz"])
 
 
 @router.post("/start")
 def start_game(data: StartGameRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Start a new quiz game in the selected category."""
-    attempt = start_new_game(db, current_user.id, data.category)
+    """Start a new quiz game in the selected category with domain lock validation."""
+    try:
+        attempt = start_new_game(db, current_user.id, data.category)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     state = get_game_state(db, attempt.id, current_user.id)
 
     if not state:
@@ -83,3 +89,29 @@ def abandon(attempt_id: int, current_user: User = Depends(get_current_user), db:
         raise HTTPException(status_code=404, detail="Active game session not found")
 
     return {"message": "Game abandoned", "attempt_id": attempt_id}
+
+
+@router.get("/domain-status")
+def get_domain_status(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Check whether the current user is locked to a specific domain."""
+    locked = get_user_locked_domain(db, current_user.id)
+    return {
+        "locked_domain": locked,
+        "is_locked": bool(locked),
+        "allowed_categories": [locked] if locked else ["python", "sql", "excel"]
+    }
+
+
+@router.post("/reset-domain")
+def reset_domain(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reset the current user's locked domain."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.locked_domain = None
+    db.commit()
+    return {"message": "Domain unlocked successfully", "locked_domain": None}
+

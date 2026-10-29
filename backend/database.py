@@ -83,6 +83,23 @@ def ensure_migrations():
                     "ALTER TABLE rooms ADD COLUMN leaderboard_released BOOLEAN DEFAULT 0"
                 )
                 conn.commit()
+
+            # Check users table columns
+            user_cols = []
+            if DATABASE_URL.startswith("sqlite"):
+                u_res = conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+                user_cols = [r[1] for r in u_res]
+            else:
+                u_res = conn.exec_driver_sql(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='users'"
+                ).fetchall()
+                user_cols = [r[0] for r in u_res]
+
+            if user_cols and "locked_domain" not in user_cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN locked_domain VARCHAR(20) DEFAULT NULL"
+                )
+                conn.commit()
     except Exception:
         # Ignore if tables are not yet created (init_db will handle table creation)
         pass

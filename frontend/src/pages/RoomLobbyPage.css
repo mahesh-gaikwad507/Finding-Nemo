@@ -754,4 +754,26 @@
   border-radius: 9999px;
 }
 
+/* Domain Lock Styles for Room Hub */
+.cat-opt-btn.locked {
+  opacity: 0.45 !important;
+  filter: grayscale(70%) !important;
+  cursor: not-allowed !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.domain-enforced-inline-hint {
+  font-size: 0.8rem;
+  color: #fbbf24;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+
 
