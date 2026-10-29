@@ -328,21 +328,35 @@ def get_game_result(db: Session, attempt_id: int, user_id: int) -> dict:
     attempt = db.query(QuizAttempt).filter(
         and_(
             QuizAttempt.id == attempt_id,
-            QuizAttempt.user_id == user_id,
-            QuizAttempt.is_completed == True
+            QuizAttempt.user_id == user_id
         )
     ).first()
 
     if not attempt:
         return None
 
+    # Ensure attempt is marked completed so results always load cleanly
+    if not attempt.is_completed:
+        attempt.is_completed = True
+        if not attempt.completed_at:
+            attempt.completed_at = datetime.now(timezone.utc)
+        db.commit()
+
     total_answered = attempt.correct_answers + attempt.wrong_answers
     accuracy = round((attempt.correct_answers / total_answered * 100), 2) if total_answered > 0 else 0
     total_time = attempt.total_time_seconds if attempt.total_time_seconds and attempt.total_time_seconds > 0 else 0
     answering_speed = round(total_time / total_answered, 1) if total_answered > 0 else 0.0
 
+    user = attempt.user
+    team_name = (user.team_name or user.username) if user else "Team"
+    leader_name = (user.leader_name or "—") if user else "—"
+    phone_number = (user.phone_number or "—") if user else "—"
+
     return {
         "attempt_id": attempt.id,
+        "team_name": team_name,
+        "leader_name": leader_name,
+        "phone_number": phone_number,
         "category": attempt.category,
         "score": attempt.score,
         "correct_answers": attempt.correct_answers,

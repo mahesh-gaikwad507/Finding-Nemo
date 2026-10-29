@@ -35,9 +35,10 @@ import { useAuth } from '../context/AuthContext';
 export default function ResultPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
     quizAPI.result(attemptId)
@@ -48,14 +49,33 @@ export default function ResultPage() {
           sounds.playVictory();
         }
       })
-      .catch(() => setError('Could not load results.'));
+      .catch((err) => {
+        console.error('Error fetching result:', err);
+        setError(err.response?.data?.detail || 'Could not load results.');
+      });
   }, [attemptId, refreshUser]);
+
+  const handleEndGame = () => {
+    const teamTitle = result?.team_name || user?.team_name || user?.username || 'Team';
+    const finalScore = result?.score ?? 0;
+    const confirmExit = window.confirm(
+      `🏁 END GAME CONFIRMATION\n\nAre you sure you want to end your tournament session?\n\n• Team: ${teamTitle}\n• Final Score: ${finalScore} pts\n\nClicking OK will finalize your results and safely log you out of the website.`
+    );
+    if (!confirmExit) return;
+
+    setExiting(true);
+    sounds.playBubble();
+    setTimeout(() => {
+      logout();
+      navigate('/auth', { replace: true });
+    }, 400);
+  };
 
   if (error) {
     return (
       <div className="result-page">
         <p className="result-error">⚠️ {error}</p>
-        <button className="result-btn" onClick={() => navigate('/categories')}>← Home</button>
+        <button className="result-btn primary" onClick={() => navigate('/auth')}>← Return to Login</button>
       </div>
     );
   }
@@ -64,7 +84,7 @@ export default function ResultPage() {
     return (
       <div className="result-page">
         <div className="result-loading ocean-spin">🐠</div>
-        <p style={{ color: '#7db8e0' }}>Calculating dive performance…</p>
+        <p style={{ color: '#7db8e0' }}>Calculating team performance & final score…</p>
       </div>
     );
   }
@@ -72,12 +92,18 @@ export default function ResultPage() {
   const {
     category, score, correct_answers, wrong_answers,
     total_questions, accuracy, total_time_seconds, nemo_reached_home,
+    team_name, leader_name, phone_number,
   } = result;
+
+  const displayTeam = team_name || user?.team_name || user?.username || 'Team';
+  const displayLeader = leader_name || user?.leader_name || '—';
+  const displayPhone = phone_number || user?.phone_number || '—';
 
   const answeredCount = (correct_answers || 0) + (wrong_answers || 0);
   const color = CATEGORY_COLOR[category] || '#00f0ff';
   const grade = score >= 250 ? 'S' : score >= 200 ? 'A' : score >= 150 ? 'B' : score >= 100 ? 'C' : 'D';
   const gradeColor = grade === 'S' ? '#fbbf24' : grade === 'A' ? '#34d399' : grade === 'B' ? '#60a5fa' : grade === 'C' ? '#fb923c' : '#f87171';
+  const isAdmin = user?.is_admin || user?.username?.toLowerCase() === 'mahesh123';
 
   return (
     <div className="result-page" style={{ '--cat-color': color }}>
@@ -94,20 +120,31 @@ export default function ResultPage() {
             {nemo_reached_home ? 'Nemo Made It Safely Home!' : 'Dive Mission Complete!'}
           </h1>
           <p className="result-subtitle">
-            {CATEGORY_EMOJI[category]} {category?.charAt(0).toUpperCase() + category?.slice(1)} Quiz Adventure
+            {CATEGORY_EMOJI[category]} {category?.charAt(0).toUpperCase() + category?.slice(1)} Competition Scorecard
           </p>
+        </div>
+
+        {/* ── Prominent Team Score Hero Showcase ── */}
+        <div className="team-score-hero-card">
+          <div className="tsh-badge">🏆 OFFICIAL TEAM SCORE</div>
+          <div className="tsh-team-name">{displayTeam}</div>
+          <div className="tsh-score-wrap">
+            <span className="tsh-big-num">{score}</span>
+            <span className="tsh-pts">PTS</span>
+          </div>
+          <div className="tsh-meta-bar">
+            <span>Leader: <strong>{displayLeader}</strong></span>
+            <span className="tsh-dot">•</span>
+            <span>Phone: <strong>{displayPhone}</strong></span>
+            <span className="tsh-dot">•</span>
+            <span>Field: <strong className="tsh-cat-tag">{category?.toUpperCase()}</strong></span>
+          </div>
         </div>
 
         {/* Evaluation Banner (Solo Mode) */}
         <div className="result-criteria-pill">
-          <span>🎯 Mission Evaluation:</span>
+          <span>🎯 Official Evaluation:</span>
           <strong>Accuracy &bull; Answering Speed &bull; Total Score</strong>
-        </div>
-
-        {/* Domain Lock Confirmation (1 Team = 1 Field Rule) */}
-        <div className="domain-locked-confirmation-pill">
-          <span>🔒</span>
-          <span>Field Locked: <strong>{category?.toUpperCase()}</strong> &bull; (1 Team = 1 Field Active)</span>
         </div>
 
         {/* Grade */}
@@ -121,31 +158,31 @@ export default function ResultPage() {
         {/* Stats grid */}
         <div className="result-stats">
           <StatCard icon="🎯" label="Correct Questions" value={`${correct_answers} / ${total_questions}`} sub={`${accuracy}% Accuracy`} color="#34d399" />
-          <StatCard icon="⏱️" label="Total Timing" value={formatTime(total_time_seconds)} sub="Current session" color="#00f0ff" />
+          <StatCard icon="⏱️" label="Total Timing" value={formatTime(total_time_seconds)} sub="Active session" color="#00f0ff" />
           <StatCard icon="⚡" label="Answering Speed" value={formatSpeed(total_time_seconds, answeredCount)} color="#fbbf24" />
           <StatCard icon="⭐" label="Total Score" value={score} sub={`/ ${total_questions * 10} pts`} color="#fbbf24" />
           <StatCard icon="❌" label="Mistakes" value={wrong_answers} sub="Questions missed" color="#f87171" />
           <StatCard icon="🏠" label="Nemo home?" value={nemo_reached_home ? 'Yes! Safe!' : 'Partially safe'} color={nemo_reached_home ? '#34d399' : '#38bdf8'} />
         </div>
 
-        {/* Individual Team Scorecard */}
+        {/* Detailed Individual Team Scorecard Box */}
         <div className="team-scorecard-box">
           <div className="scorecard-header">
             <span className="scorecard-badge-icon">📋</span>
-            <span className="scorecard-title">Official Team Scorecard</span>
+            <span className="scorecard-title">Official Team Record Details</span>
           </div>
           <div className="scorecard-grid">
             <div className="scorecard-item">
               <span className="sc-lbl">Team Name:</span>
-              <span className="sc-val bold">{user?.team_name || user?.username}</span>
+              <span className="sc-val bold">{displayTeam}</span>
             </div>
             <div className="scorecard-item">
               <span className="sc-lbl">Leader Name:</span>
-              <span className="sc-val">{user?.leader_name || '—'}</span>
+              <span className="sc-val">{displayLeader}</span>
             </div>
             <div className="scorecard-item">
               <span className="sc-lbl">Phone Number:</span>
-              <span className="sc-val mono">{user?.phone_number || '—'}</span>
+              <span className="sc-val mono">{displayPhone}</span>
             </div>
             <div className="scorecard-item">
               <span className="sc-lbl">Field / Domain:</span>
@@ -173,24 +210,26 @@ export default function ResultPage() {
         {/* Single Attempt Lock Notice */}
         <div className="single-attempt-notice">
           <span>🔒</span>
-          <span>Official Attempt Completed &bull; Under competition rules, each team can only attempt once. Dive Again is disabled.</span>
+          <span>Official Attempt Completed &bull; Under competition rules, each team can only attempt once. Your score has been submitted to the tournament records.</span>
         </div>
 
-        {/* Action buttons (Dive Again REMOVED per competition rules) */}
+        {/* Action buttons with End Game option */}
         <div className="result-actions">
+          <button
+            id="result-end-game-btn"
+            className="result-btn end-game-btn"
+            onClick={handleEndGame}
+            disabled={exiting}
+            title="End competition and log out from the website"
+          >
+            {exiting ? 'Ending Session…' : '🏁 End Game & Exit'}
+          </button>
           <button
             id="result-leaderboard-btn"
             className="result-btn primary"
             onClick={() => navigate(`/leaderboard?category=${category}`)}
           >
             🏆 View Competition Leaderboard
-          </button>
-          <button
-            id="result-home-btn"
-            className="result-btn secondary"
-            onClick={() => navigate('/categories')}
-          >
-            ← Categories
           </button>
           {isAdmin && (
             <button
