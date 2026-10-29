@@ -65,6 +65,7 @@ export const adminAPI = {
   status: () => api.get('/api/admin/status'),
   startGame: () => api.post('/api/admin/start-game'),
   resetGame: () => api.post('/api/admin/reset-game'),
+  clearTeams: () => api.post('/api/admin/clear-teams'),
   getTeams: () => api.get('/api/admin/teams'),
   downloadExcel: () => api.get('/api/admin/export-excel', { responseType: 'blob' }),
 };

@@ -96,6 +96,55 @@ def reset_competition(admin: User = Depends(require_admin), db: Session = Depend
     }
 
 
+@router.post("/clear-teams")
+def clear_all_teams_history(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Admin clears all history of previously registered teams and resets attempts."""
+    try:
+        from models import RoomParticipant, RoomTeam, Room, UserAnswer, QuizAttempt
+        
+        # 1. Remove room participants, room teams, rooms
+        db.query(RoomParticipant).delete(synchronize_session=False)
+        db.query(RoomTeam).delete(synchronize_session=False)
+        db.query(Room).delete(synchronize_session=False)
+
+        # 2. Find all non-admin users
+        non_admin_users = db.query(User).filter(
+            (User.is_admin == False) & (User.username != "mahesh123")
+        ).all()
+        non_admin_ids = [u.id for u in non_admin_users]
+
+        if non_admin_ids:
+            # Delete user answers
+            attempt_ids = [
+                a.id for a in db.query(QuizAttempt.id).filter(QuizAttempt.user_id.in_(non_admin_ids)).all()
+            ]
+            if attempt_ids:
+                db.query(UserAnswer).filter(UserAnswer.attempt_id.in_(attempt_ids)).delete(synchronize_session=False)
+            
+            # Delete quiz attempts
+            db.query(QuizAttempt).filter(QuizAttempt.user_id.in_(non_admin_ids)).delete(synchronize_session=False)
+
+            # Delete non-admin users
+            db.query(User).filter(User.id.in_(non_admin_ids)).delete(synchronize_session=False)
+
+        # 3. Reset competition setting back to waiting mode
+        setting = db.query(CompetitionSetting).filter(CompetitionSetting.id == 1).first()
+        if setting:
+            setting.is_game_started = False
+            setting.started_at = None
+
+        db.commit()
+
+        return {
+            "message": f"Successfully cleared all history of previously registered players ({len(non_admin_ids)} teams removed). Ready for new competition!",
+            "cleared_count": len(non_admin_ids),
+            "is_game_started": False
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to clear history: {str(e)}")
+
+
 @router.get("/teams")
 def get_registered_teams(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     """Get all registered teams with real-time quiz results for admin live monitor."""

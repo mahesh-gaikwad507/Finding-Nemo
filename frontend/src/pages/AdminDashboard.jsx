@@ -108,6 +108,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleClearTeams = async () => {
+    const confirmed = window.confirm(
+      '⚠️ WARNING: Are you sure you want to clear ALL registered teams and reset their test history?\n\nThis will remove all participant accounts, scores, and quiz attempts so you can start a completely fresh competition. This action cannot be undone!'
+    );
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    setError('');
+    sounds.playBubble();
+    try {
+      const res = await adminAPI.clearTeams();
+      setSuccessMsg(res.data.message || 'All registered teams and history successfully cleared!');
+      await fetchAdminData();
+      setTimeout(() => setSuccessMsg(''), 6000);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to clear teams.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const topScore = teams.length > 0 ? Math.max(...teams.map((t) => t.score || 0)) : 0;
   const inProgressCount = teams.filter((t) => t.status.includes('In Progress')).length;
 
@@ -189,6 +210,16 @@ export default function AdminDashboard() {
               disabled={downloading}
             >
               {downloading ? 'Preparing Excel…' : '📥 Download Excel Sheet (.xlsx)'}
+            </button>
+
+            <button
+              id="admin-clear-teams-btn"
+              className="btn-clear-teams"
+              onClick={handleClearTeams}
+              disabled={actionLoading}
+              title="Delete all previously registered teams and history for a fresh tournament"
+            >
+              {actionLoading ? 'Clearing…' : '🗑️ Clear All Registered Teams'}
             </button>
           </div>
         </section>
