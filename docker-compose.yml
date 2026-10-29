@@ -7,8 +7,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - SECRET_KEY=nemo-adventure-super-secret-key-production-ready-2026
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - DB_TYPE=sqlite
+      - SECRET_KEY=4bd70c59015d8331a3f52320da86e700
+      - ALGORITHM=c47f5390ce27b7f4df06535e05157ea9
+      - ACCESS_TOKEN_EXPIRE_MINUTES=0ca95f994028f938359f7523f271310f
+      - DB_TYPE=b3fe7dc124ab70fca25e440d98c73168
     restart: unless-stopped
