@@ -342,8 +342,8 @@ export default function RoomQuizPage() {
           </div>
 
           <div className="track-landmarks">
-            <span>🏠 Start</span>
-            <span>🌊 Open Deep</span>
+            <span>🌊 Open Deep (Start)</span>
+            <span>🏊 Reef Expedition</span>
             <span>🪸 Coral Safe Zone (Finish 🏁)</span>
           </div>
         </div>
@@ -380,11 +380,22 @@ export default function RoomQuizPage() {
           </div>
 
           <div className="q-tags-row">
+            <span className="q-number-pill">
+              Question {Math.min(my_team?.current_question || 1, total_questions)} of {total_questions}
+            </span>
             <span className="concept-badge">{question.concept}</span>
             <span className={`diff-badge diff-${question.difficulty}`}>{question.difficulty}</span>
           </div>
 
-          <h2 className="q-text">{question.question_text}</h2>
+          <div className="room-question-header-row">
+            <span className="room-q-badge-chip">
+              Q{Math.min(my_team?.current_question || 1, total_questions)}
+            </span>
+            <h2 className="q-text">
+              <strong className="q-num-prefix">Question {Math.min(my_team?.current_question || 1, total_questions)}: </strong>
+              {question.question_text}
+            </h2>
+          </div>
 
           <div className="options-grid">
             {Object.entries(question.options).map(([letter, text]) => {

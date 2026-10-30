@@ -209,24 +209,31 @@ export default function QuizPage() {
 
       {/* Progress bar */}
       <div className="progress-wrap">
+        <div className="progress-info-row">
+          <span className="progress-q-label">
+            <span className="progress-dot" /> Question {current_question} of {TOTAL}
+          </span>
+          <span className="progress-pct-label">{Math.round(((current_question - 1) / TOTAL) * 100)}% Completed</span>
+        </div>
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      {/* Nemo's ocean journey */}
+      {/* Nemo's ocean journey (Left to Right from Open Sea to Coral Home) */}
       <div className="nemo-track" aria-label={`Nemo has answered ${correct_answers} questions correctly`}>
         <div className="ocean-track">
-          <div className="track-start">🏠</div>
+          <div className="track-start" title="Lost at Sea (Start)">🌊</div>
           <div className="track-line">
-            <div className="nemo-dot" style={{ left: `${nemoProgress}%` }}>
+            <div className="track-fill" style={{ width: `${nemoProgress}%` }} />
+            <div className="nemo-dot" style={{ left: `${nemoProgress}%` }} title={`Nemo: ${correct_answers}/${TOTAL} steps home`}>
               🐠
             </div>
           </div>
-          <div className="track-end">🪸</div>
+          <div className="track-end" title="Coral Reef Home (Destination)">🏠</div>
         </div>
         <p className="nemo-label">
-          Nemo is {correct_answers}/{TOTAL} of the way home
+          Nemo has swum {correct_answers}/{TOTAL} steps toward home
         </p>
       </div>
 
@@ -273,15 +280,22 @@ export default function QuizPage() {
             </div>
           )}
 
-          {/* Concept + difficulty */}
+          {/* Question Number Badge + Concept + Difficulty */}
           <div className="question-meta">
+            <span className="q-number-pill">Question {current_question} of {TOTAL}</span>
             <span className="concept-tag">{question.concept}</span>
             <span className={`diff-tag diff-${question.difficulty}`}>{question.difficulty}</span>
           </div>
 
           {/* Question text */}
           <div className="question-card">
-            <p className="question-text">{question.question_text}</p>
+            <div className="question-header-row">
+              <span className="question-badge-chip">Q{current_question}</span>
+              <p className="question-text">
+                <strong className="q-num-prefix">Question {current_question}: </strong>
+                {question.question_text}
+              </p>
+            </div>
 
             {/* Options grid */}
             <div className="options-grid">
