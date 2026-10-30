@@ -178,7 +178,7 @@ def test_answering_speed_formula_and_zero_answers_safe(db_session):
 
 
 def test_final_scores_and_accuracy_calculation(db_session):
-    """Verify score calculation (+10 for correct, -2 for wrong)."""
+    """Verify score calculation (+10 for correct, 0 for wrong - no negative marking)."""
     attempt = start_new_game(db_session, user_id=1, category="python")
 
     # Answer question 1 correctly (option A is correct)
@@ -190,8 +190,8 @@ def test_final_scores_and_accuracy_calculation(db_session):
     # Answer question 2 incorrectly (option B is wrong)
     res2 = submit_answer(db_session, attempt.id, 1, 2, "B", client_time_seconds=10)
     assert res2["is_correct"] is False
-    assert res2["score_change"] == -2
-    assert res2["total_score"] == 8
+    assert res2["score_change"] == 0
+    assert res2["total_score"] == 10
 
 
 def test_multiplayer_winner_score_based_ranking(db_session):

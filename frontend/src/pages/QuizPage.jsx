@@ -351,7 +351,7 @@ export default function QuizPage() {
             <p className="feedback-answer">
               {feedback.is_correct
                 ? `Great job! +${feedback.score_change} points`
-                : `The correct answer was ${feedback.correct_answer} · −${Math.abs(feedback.score_change)} points`}
+                : `The correct answer was ${feedback.correct_answer} (0 points · No negative marking)`}
             </p>
             <p className="feedback-explanation">{feedback.explanation}</p>
             <button
@@ -395,7 +395,7 @@ export default function QuizPage() {
               <div className="rule-item">
                 <span className="rule-badge">⭐</span>
                 <div>
-                  <strong>Scoring & Timing:</strong> +10 points for correct answers, -2 points for incorrect answers. Fast completion with high accuracy achieves top ranking.
+                  <strong>Scoring & Timing:</strong> +10 points for correct answers, 0 points for incorrect answers (No negative marking). Fast completion with high accuracy achieves top ranking.
                 </div>
               </div>
             </div>

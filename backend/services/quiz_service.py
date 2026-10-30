@@ -21,7 +21,7 @@ def get_cached_question_by_id(db: Session, question_id: int) -> Optional[Questio
 
 TOTAL_QUESTIONS = 30
 CORRECT_POINTS = 10
-WRONG_PENALTY = 2
+WRONG_PENALTY = 0
 
 
 def get_user_locked_domain(db: Session, user_id: int) -> Optional[str]:

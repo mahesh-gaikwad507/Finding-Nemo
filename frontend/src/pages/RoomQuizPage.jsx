@@ -459,7 +459,7 @@ export default function RoomQuizPage() {
             <p className="fb-score">
               {feedback.is_correct
                 ? `+${feedback.score_change} Team Points`
-                : `Correct answer was ${feedback.correct_answer} (${feedback.score_change} pts)`}
+                : `Correct answer was ${feedback.correct_answer} (0 pts · No negative marking)`}
             </p>
             <p className="fb-expl">{feedback.explanation}</p>
             <button className="fb-btn" onClick={handleNext}>

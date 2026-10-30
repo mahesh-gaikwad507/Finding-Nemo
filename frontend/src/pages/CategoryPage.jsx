@@ -387,7 +387,7 @@ export default function CategoryPage() {
                 <span className="m-rule-icon">⭐</span>
                 <div>
                   <strong>Scoring &amp; Leaderboard:</strong>
-                  <p><strong>+10 points</strong> for correct answers, <strong>-2 points</strong> for wrong answers. Final standings are ranked by Score, Accuracy, and Fastest Completion Time.</p>
+                  <p><strong>+10 points</strong> for correct answers (<strong>No negative marking</strong> for wrong answers). Final standings are ranked by Score, Accuracy, and Fastest Completion Time.</p>
                 </div>
               </div>
 
