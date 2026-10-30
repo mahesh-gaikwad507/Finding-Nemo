@@ -170,7 +170,7 @@ export default function QuizPage() {
             {CATEGORY_EMOJI[category]} {category?.toUpperCase()}
           </span>
           <span className="q-counter">
-            {current_question} <span className="q-of">/ {TOTAL}</span>
+            Q.{current_question} <span className="q-of">/ {TOTAL}</span>
           </span>
         </div>
 
@@ -211,7 +211,7 @@ export default function QuizPage() {
       <div className="progress-wrap">
         <div className="progress-info-row">
           <span className="progress-q-label">
-            <span className="progress-dot" /> Question {current_question} of {TOTAL}
+            <span className="progress-dot" /> Q.{current_question} of {TOTAL}
           </span>
           <span className="progress-pct-label">{Math.round(((current_question - 1) / TOTAL) * 100)}% Completed</span>
         </div>
@@ -220,14 +220,14 @@ export default function QuizPage() {
         </div>
       </div>
 
-      {/* Nemo's ocean journey (Left to Right from Open Sea to Coral Home) */}
+      {/* Nemo's ocean journey (Left to Right from Open Sea to Coral Home with fish facing right) */}
       <div className="nemo-track" aria-label={`Nemo has answered ${correct_answers} questions correctly`}>
         <div className="ocean-track">
           <div className="track-start" title="Lost at Sea (Start)">🌊</div>
           <div className="track-line">
             <div className="track-fill" style={{ width: `${nemoProgress}%` }} />
             <div className="nemo-dot" style={{ left: `${nemoProgress}%` }} title={`Nemo: ${correct_answers}/${TOTAL} steps home`}>
-              🐠
+              <span className="nemo-fish-face-right" role="img" aria-label="Nemo swimming right">🐠</span>
             </div>
           </div>
           <div className="track-end" title="Coral Reef Home (Destination)">🏠</div>
@@ -282,18 +282,18 @@ export default function QuizPage() {
 
           {/* Question Number Badge + Concept + Difficulty */}
           <div className="question-meta">
-            <span className="q-number-pill">Question {current_question} of {TOTAL}</span>
+            <span className="q-number-pill">Q.{current_question} of {TOTAL}</span>
             <span className="concept-tag">{question.concept}</span>
             <span className={`diff-tag diff-${question.difficulty}`}>{question.difficulty}</span>
           </div>
 
-          {/* Question text */}
+          {/* Question text with prominent Q.1, Q.2, Q.3 etc. */}
           <div className="question-card">
             <div className="question-header-row">
-              <span className="question-badge-chip">Q{current_question}</span>
+              <span className="question-badge-chip">Q.{current_question}</span>
               <p className="question-text">
-                <strong className="q-num-prefix">Question {current_question}: </strong>
-                {question.question_text}
+                <span className="q-prefix-num">Q.{current_question}</span>{' '}
+                {question.question_text?.replace(/^Q\.?\s*\d+[:.]?\s*/i, '')}
               </p>
             </div>
 

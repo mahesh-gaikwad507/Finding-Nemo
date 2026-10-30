@@ -220,13 +220,25 @@
 .nemo-dot {
   position: absolute;
   top: 50%;
-  /* Flip horizontally with scaleX(-1) so fish emoji faces forward (left to right) */
-  transform: translate(-50%, -50%) scaleX(-1);
-  font-size: 24px;
+  transform: translate(-50%, -50%);
   transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 0 8px rgba(56, 200, 255, 0.8));
-  display: inline-block;
+  filter: drop-shadow(0 0 10px rgba(56, 200, 255, 0.9));
+  display: flex;
+  align-items: center;
+  justify-content: center;
   user-select: none;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.nemo-fish-face-right {
+  display: inline-block;
+  /* Flips the fish emoji horizontally so the head/mouth faces towards the RIGHT */
+  transform: scaleX(-1) !important;
+  -webkit-transform: scaleX(-1) !important;
+  -moz-transform: scaleX(-1) !important;
+  font-size: 26px;
+  line-height: 1;
 }
 
 .nemo-label {
@@ -407,7 +419,7 @@
 .question-badge-chip {
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
   color: #ffffff;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 800;
   padding: 4px 10px;
   border-radius: 8px;
@@ -419,10 +431,18 @@
   margin-top: 2px;
 }
 
-.q-num-prefix {
-  color: #38bdf8;
+.q-prefix-num {
+  color: #00f0ff;
   font-weight: 800;
-  margin-right: 4px;
+  display: inline-block;
+  margin-right: 6px;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 0.95em;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
 }
 
 .question-text {
