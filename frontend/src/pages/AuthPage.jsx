@@ -101,8 +101,8 @@ export default function AuthPage() {
         {/* Logo area */}
         <div className="auth-logo">
           <span className="fish-emoji">🐠</span>
-          <h1>Dexerity</h1>
-          <p className="auth-tagline">Finding Nemo Quiz Competition</p>
+          <h1>Techflix</h1>
+          <p className="auth-tagline">Finding Nemo</p>
         </div>
 
         {/* Tabs */}

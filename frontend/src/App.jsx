@@ -1,5 +1,5 @@
 /**
- * App.jsx — routing root for Dexerity: Finding Nemo Quiz Adventure.
+ * App.jsx — routing root for Techflix: Finding Nemo.
  */
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';

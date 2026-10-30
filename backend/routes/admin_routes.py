@@ -232,7 +232,7 @@ def export_teams_excel(admin: User = Depends(require_admin), db: Session = Depen
     # Title Row
     ws.merge_cells("A1:K1")
     title_cell = ws["A1"]
-    title_cell.value = "Dexerity — Finding Nemo Quiz Competition: Official Scorecard"
+    title_cell.value = "Techflix — Finding Nemo: Official Scorecard"
     title_cell.font = Font(name="Calibri", size=16, bold=True, color="FFFFFF")
     title_cell.fill = PatternFill(start_color="0284C7", end_color="0284C7", fill_type="solid")
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -372,7 +372,7 @@ def export_teams_excel(admin: User = Depends(require_admin), db: Session = Depen
     wb.save(output)
     output.seek(0)
 
-    filename = f"Dexerity_Competition_Records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"Techflix_Competition_Records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     return Response(
         content=output.getvalue(),

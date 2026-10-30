@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo       Dexerity - Finding Nemo: Public Deployment
+echo       Techflix - Finding Nemo: Public Deployment
 echo ========================================================
 echo.
 

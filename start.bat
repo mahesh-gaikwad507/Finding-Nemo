@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo       Dexerity - Finding Nemo: Quiz Adventure
+echo       Techflix - Finding Nemo
 echo ========================================================
 echo.
 

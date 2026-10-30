@@ -96,7 +96,7 @@ export default function AdminDashboard() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Dexerity_Competition_Records_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      link.setAttribute('download', `Techflix_Competition_Records_${new Date().toISOString().slice(0, 10)}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
         <div className="admin-nav-brand">
           <span>👑</span>
           <div>
-            <span className="brand-title">Dexerity Admin</span>
+            <span className="brand-title">Techflix Admin</span>
             <span className="brand-subtitle">Host Command Center</span>
           </div>
         </div>

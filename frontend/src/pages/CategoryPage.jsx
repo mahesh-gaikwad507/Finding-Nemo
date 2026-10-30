@@ -144,7 +144,7 @@ export default function CategoryPage() {
       <nav className="cat-nav">
         <div className="cat-nav-brand">
           <span>🐠</span>
-          <span>Dexerity</span>
+          <span>Techflix</span>
         </div>
         <div className="cat-nav-right">
           <button
@@ -183,7 +183,7 @@ export default function CategoryPage() {
 
       {/* Hero */}
       <div className="cat-hero">
-        <h1>Dexerity Quiz Competition</h1>
+        <h1>Techflix — Finding Nemo</h1>
         <p>
           Team: <strong>{user?.team_name || user?.username}</strong> {user?.leader_name ? `• Leader: ${user.leader_name}` : ''}
         </p>

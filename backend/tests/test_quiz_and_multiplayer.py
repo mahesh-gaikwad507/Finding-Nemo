@@ -423,7 +423,7 @@ def test_competition_admin_controls_and_excel_export(db_session):
     response = export_teams_excel(db=db_session)
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    assert "Dexerity_Competition_Records" in response.headers["Content-Disposition"]
+    assert "Techflix_Competition_Records" in response.headers["Content-Disposition"]
     assert response.headers["Content-Disposition"].endswith(".xlsx")
 
     # Verify workbook content
